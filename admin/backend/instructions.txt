@@ -1,0 +1,188 @@
+--- SANA SILVER ADMIN BACKEND ARCHITECTURE GUIDELINES ---
+
+1. Folder Structure: FEATURE-BASED ARCHITECTURE
+   Project structure:
+   ```
+   backend/
+   ├── features/              # Feature-based modules
+   │   ├── users/            # User feature
+   │   │   ├── user.model.js
+   │   │   ├── user.service.js
+   │   │   ├── user.controller.js
+   │   │   └── user.routes.js
+   │   ├── products/         # Product feature
+   │   │   ├── product.model.js
+   │   │   ├── product.service.js
+   │   │   ├── product.controller.js
+   │   │   └── product.routes.js
+   │   └── common/           # Shared feature code
+   ├── shared/               # Shared infrastructure
+   │   ├── config/          # Configuration files
+   │   ├── middlewares/     # Shared middleware
+   │   ├── utils/           # Utility functions
+   │   ├── scheduled/       # Cron jobs
+   │   └── scripts/         # One-time scripts
+   └── server.js            # Entry point
+   ```
+   
+   Benefits:
+   - Related code stays together
+   - Clear separation between features and infrastructure
+   - Easier to scale and maintain
+   - Clear feature boundaries
+   - Better for large projects
+
+2. File Naming: Use standardized naming within feature folders:
+   - user.model.js, user.service.js, user.controller.js, user.routes.js
+   - product.model.js, product.service.js, product.controller.js, product.routes.js
+   - Shared: auth.middleware.js (in shared/middlewares/), db.config.js (in shared/config/)
+   - Utilities: response.util.js, logger.util.js (in shared/utils/)
+
+3. Import Path Guidelines:
+   From server.js to shared:
+   ```javascript
+   import logger from './shared/utils/logger.util.js';
+   import authMiddleware from './shared/middlewares/auth.middleware.js';
+   ```
+   
+   Within shared folder (relative paths):
+   ```javascript
+   import logger from '../utils/logger.util.js';
+   import apiResponse from '../utils/response.util.js';
+   ```
+   
+   From features to shared:
+   ```javascript
+   import logger from '../../shared/utils/logger.util.js';
+   import authMiddleware from '../../shared/middlewares/auth.middleware.js';
+   ```
+
+4. Use consistent standardized API responses [shared/utils/response.util.js]
+   - All responses must use apiResponse utility
+   - Follow standard format: { success, statusCode, message, data, meta, timestamp }
+
+5. Use custom logger function with proper log levels [shared/utils/logger.util.js]
+   Log Levels:
+   - logger.debug() - Development ONLY (testing, debugging, verbose info)
+   - logger.test() - Development ONLY (test-related logs)
+   - logger.info() - BOTH environments (operational events, user actions, state changes)
+   - logger.warn() - BOTH environments (warnings, deprecated features)
+   - logger.error() - BOTH environments (errors, exceptions, critical issues)
+   
+   Guidelines:
+   - Use debug/test for development debugging ONLY
+   - Use info for production-important operational logs
+   - Use warn for potential issues
+   - Use error for actual errors and exceptions
+   - Logs include timestamps and proper formatting
+
+6. Error handling with enhanced debugging [shared/middlewares/error.middleware.js]
+   - Always use try/catch in async functions
+   - Throw errors in services, catch in controllers
+   - Error middleware automatically captures:
+     * File name where error occurred
+     * Function name where error occurred
+     * Line number and column number
+   - Detailed error logs for debugging
+   - Clean error responses for clients
+
+7. Use ES6 modules (import/export) throughout the application
+   - No CommonJS (require/module.exports)
+
+8. Server runs on specified PORT - when testing, skip server starting and test APIs directly
+
+9. Use cookies-based authentication with JWT tokens
+   - Implement authMiddleware for protected routes
+   - Store JWT in httpOnly cookies for security
+
+10. Never write documentation unless explicitly requested
+
+11. Use proper flow: routes → controllers → services → models
+    - Routes: Define endpoints and apply middleware
+    - Controllers: Thin layer, handle requests/responses
+    - Services: ALL business logic goes here
+    - Models: Database schemas and validation
+    - All within their respective feature folders
+
+12. Never use classes - use normal functions and plain objects
+
+13. Function Naming:
+    - Service functions: Descriptive action names (authenticateUser, fetchUserProfile, updateUserData)
+    - Controller functions: Simple names matching route actions (login, getProfile, updateProfile)
+
+14. Always monitor response.util.js, logger.util.js, and error.middleware.js formats
+
+15. For API responses, add proper pagination and summary sections where applicable
+    - Use apiResponse.successWithPagination for paginated results
+    - Use apiResponse.successWithSummary for summary data
+    - Use apiResponse.successWithMeta for both
+
+16. Always use try/catch in async functions with proper error logging
+    - Use appropriate log levels
+    - Include context in logs (user ID, operation type)
+
+17. Keep controllers thin - all business logic goes in services
+    - Controllers should only extract data and call services
+    - Services return { data, pagination?, summary? }
+
+18. Use apiResponse utility for ALL controller responses
+    - Success: apiResponse.success, apiResponse.created
+    - Errors: apiResponse.badRequest, apiResponse.unauthorized, etc.
+
+19. Structure service returns as { data, pagination?, summary? } for consistency
+    - Controllers destructure and pass to apiResponse
+
+20. Use appropriate logger methods based on environment:
+    - Development: debug, test, info, warn, error
+    - Production: info, warn, error (debug/test excluded)
+
+21. Environment variables for all configuration and secrets
+    - Never hardcode sensitive data
+    - Use .env file (not committed to git)
+
+22. Database Operations:
+    - Use .lean() for read-only operations (performance)
+    - Use Promise.all() for parallel operations
+    - Always validate input data
+    - Use transactions for multi-document operations
+
+23. Security Practices:
+    - Validate all input data
+    - Implement proper CORS settings
+    - Sanitize user inputs
+
+24. Testing:
+    - Test APIs using curl commands
+    - Skip server startup in tests
+    - Verify error handling works correctly
+
+25. Code Quality:
+    - Use camelCase for variables and functions
+    - Use PascalCase for models/classes
+    - Use UPPER_SNAKE_CASE for constants
+    - Use descriptive names that explain purpose
+
+26. Feature Module Guidelines:
+    - Keep all feature-related code in its folder
+    - Export routes from feature's routes file
+    - Import and register in server.js
+    - Shared code goes in features/common/
+    - Feature-specific middleware can live in feature folder    - Use relative imports within features
+    - Use absolute path from root for shared infrastructure
+
+27. Shared Infrastructure Guidelines:
+    - All reusable code goes in shared/
+    - Config files in shared/config/
+    - Middleware in shared/middlewares/
+    - Utilities in shared/utils/
+    - Cron jobs in shared/scheduled/
+    - Scripts in shared/scripts/
+Example Feature Structure:
+```
+features/users/
+├── user.model.js          # User schema
+├── user.service.js        # Business logic
+├── user.controller.js     # Request handlers
+├── user.routes.js         # Route definitions
+└── user.middleware.js     # Feature-specific middleware (optional)
+```
