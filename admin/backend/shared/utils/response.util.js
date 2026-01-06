@@ -125,6 +125,9 @@ const apiResponse = {
     serverError: (res, message = "Internal server error") => {
         return sendResponse(res, 500, false, message);
     },
+    error: (res, message = "Internal server error") => {
+        return sendResponse(res, 500, false, message);
+    },
 };
 
 export default apiResponse;
