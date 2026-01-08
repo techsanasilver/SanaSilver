@@ -14,17 +14,6 @@ const productSchema = new mongoose.Schema(
             lowercase: true,
             trim: true,
         },
-        sku: {
-            type: String,
-            required: [true, "SKU is required"],
-            unique: true,
-            uppercase: true,
-            trim: true,
-            match: [
-                /^SS-[A-Z0-9]+-[A-Z0-9]+-\d{3,}$/,
-                "SKU must follow format: SS-CATEGORY-NAME-NUMBER (e.g., SS-RING-LOTUS-001)",
-            ],
-        },
         description: {
             type: String,
             trim: true,
@@ -52,25 +41,17 @@ const productSchema = new mongoose.Schema(
             enum: ["925", "999"],
             required: [true, "Purity is required"],
         },
-        weight: {
+        makingChargesPerGram: {
             type: Number,
-            required: [true, "Weight is required"],
-            min: [0, "Weight cannot be negative"],
-        },
-        makingCharges: {
-            type: Number,
-            default: 0,
+            required: [true, "Making charges per gram are required"],
             min: [0, "Making charges cannot be negative"],
-        },
-        makingChargesType: {
-            type: String,
-            enum: ["fixed", "percentage", "per-gram"],
-            default: "fixed",
         },
         gstRate: {
             type: Number,
-            default: 3,
+            required: [true, "GST rate is required"],
             min: [0, "GST rate cannot be negative"],
+            max: [100, "GST rate cannot exceed 100%"],
+            default: 3,
         },
         images: {
             type: [String],
@@ -81,17 +62,6 @@ const productSchema = new mongoose.Schema(
                 },
                 message: "Product must have at least one image",
             },
-        },
-        variants: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "ProductVariant",
-            },
-        ],
-        basePrice: {
-            type: Number,
-            required: [true, "Base price is required"],
-            min: [0, "Base price cannot be negative"],
         },
         isFeatured: {
             type: Boolean,
@@ -104,20 +74,6 @@ const productSchema = new mongoose.Schema(
         tags: {
             type: [String],
             default: [],
-        },
-        dimensions: {
-            length: {
-                type: Number,
-                min: [0, "Length cannot be negative"],
-            },
-            width: {
-                type: Number,
-                min: [0, "Width cannot be negative"],
-            },
-            height: {
-                type: Number,
-                min: [0, "Height cannot be negative"],
-            },
         },
         hallmark: {
             isHallmarked: {
@@ -145,7 +101,8 @@ const productSchema = new mongoose.Schema(
             },
             gender: {
                 type: String,
-                enum: ["men", "women", "unisex"],
+                enum: ["men", "women", "unisex", ""],
+                default: "",
             },
             plating: {
                 type: String,
@@ -181,20 +138,69 @@ const productSchema = new mongoose.Schema(
             default: 0,
             min: [0, "View count cannot be negative"],
         },
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: [true, "Created by user is required"],
+        },
+        updatedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
     },
     {
         timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
     }
 );
 
+// Virtual to get all variants for this product
+productSchema.virtual("variants", {
+    ref: "ProductVariant",
+    localField: "_id",
+    foreignField: "product",
+});
+
+// Virtual to get minimum variant price
+productSchema.virtual("minPrice").get(function () {
+    if (this.variantsData && this.variantsData.length > 0) {
+        return Math.min(...this.variantsData.map((v) => v.sellingPrice));
+    }
+    return null;
+});
+
+// Virtual to get maximum variant price
+productSchema.virtual("maxPrice").get(function () {
+    if (this.variantsData && this.variantsData.length > 0) {
+        return Math.max(...this.variantsData.map((v) => v.sellingPrice));
+    }
+    return null;
+});
+
+// Virtual to get total stock across all variants
+productSchema.virtual("totalStock").get(function () {
+    if (this.variantsData && this.variantsData.length > 0) {
+        return this.variantsData.reduce(
+            (sum, v) => sum + (v.stockQuantity || 0),
+            0
+        );
+    }
+    return 0;
+});
+
 // Indexes for faster queries
-productSchema.index({ slug: 1 });
-productSchema.index({ sku: 1 });
+// Note: slug already indexed via unique: true
+productSchema.index({ name: 1 });
+productSchema.index({ category: 1 });
 productSchema.index({ category: 1, isActive: 1 });
 productSchema.index({ collections: 1 });
+productSchema.index({ isFeatured: 1 });
+productSchema.index({ isActive: 1 });
 productSchema.index({ isFeatured: 1, isActive: 1 });
 productSchema.index({ "ratings.average": -1 });
 productSchema.index({ createdAt: -1 });
+productSchema.index({ name: "text", description: "text" }); // Full-text search
 
 const Product = mongoose.model("Product", productSchema);
 
