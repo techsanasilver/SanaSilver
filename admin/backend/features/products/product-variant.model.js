@@ -147,6 +147,10 @@ const productVariantSchema = new mongoose.Schema(
                         type: Number,
                         default: 0,
                     },
+                    isPrimary: {
+                        type: Boolean,
+                        default: false,
+                    },
                     _id: false,
                 },
             ],
@@ -292,6 +296,7 @@ productVariantSchema.index({ isActive: 1 });
 productVariantSchema.index({ product: 1, isActive: 1 });
 productVariantSchema.index({ product: 1, sortOrder: 1 });
 productVariantSchema.index({ "attributes.key": 1, "attributes.value": 1 });
+productVariantSchema.index({ "images.publicId": 1 }); // For image lookups
 
 // Compound index for filtering
 productVariantSchema.index({

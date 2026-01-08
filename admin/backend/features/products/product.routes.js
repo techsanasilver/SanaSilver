@@ -69,7 +69,7 @@ router.post(
     requirePermission("products.create"),
     uploadMultiple("images", 10),
     validateImageUpload({
-        required: false,
+        required: true,
         minFiles: 1,
         maxFiles: 10,
         uploadType: "product",

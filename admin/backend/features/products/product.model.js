@@ -224,6 +224,7 @@ productSchema.index({ isFeatured: 1, isActive: 1 });
 productSchema.index({ "ratings.average": -1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ name: "text", description: "text" }); // Full-text search
+productSchema.index({ "images.publicId": 1 }); // For image lookups
 
 const Product = mongoose.model("Product", productSchema);
 

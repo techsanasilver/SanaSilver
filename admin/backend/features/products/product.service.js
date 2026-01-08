@@ -44,7 +44,9 @@ export const createProduct = async (
             localSession
         );
         if (!category) {
-            throw new Error("Category not found");
+            throw new Error(
+                `Category not found with ID: ${productData.category}`
+            );
         }
 
         // Generate unique slug if not provided
@@ -52,38 +54,69 @@ export const createProduct = async (
             productData.slug = await generateSlug(productData.name);
         }
 
-        // Handle image uploads
-        if (imageFiles && imageFiles.length > 0) {
-            const slugBase = productData.slug;
-            const imageBuffers = imageFiles.map((file) => file.buffer);
-            const uploadedImages = await uploadMultipleImages(
-                imageBuffers,
-                "products",
-                `prod_${slugBase}`
-            );
+        // Handle image uploads with cleanup on failure
+        let uploadedImages = [];
+        try {
+            if (imageFiles && imageFiles.length > 0) {
+                const slugBase = productData.slug;
+                const imageBuffers = imageFiles.map((file) => file.buffer);
+                uploadedImages = await uploadMultipleImages(
+                    imageBuffers,
+                    "products",
+                    `prod_${slugBase}`
+                );
 
-            // Format images for database
-            productData.images = uploadedImages.map((img, index) => ({
-                publicId: img.publicId,
-                url: img.secureUrl,
-                alt: productData.name,
-                sortOrder: index,
-                isPrimary: index === 0,
-            }));
-        }
+                // Format images for database
+                productData.images = uploadedImages.map((img, index) => ({
+                    publicId: img.publicId,
+                    url: img.secureUrl,
+                    alt: productData.name,
+                    sortOrder: index,
+                    isPrimary: index === 0,
+                }));
+            }
 
-        // Validate product has at least one image
-        if (!productData.images || productData.images.length === 0) {
-            throw new Error("Product must have at least one image");
+            // Validate product has at least one image
+            if (!productData.images || productData.images.length === 0) {
+                throw new Error("Product must have at least one image");
+            }
+        } catch (uploadError) {
+            // Clean up any uploaded images on failure
+            if (uploadedImages.length > 0) {
+                const publicIds = uploadedImages.map((img) => img.publicId);
+                try {
+                    await deleteMultipleImages(publicIds);
+                    logger.info(
+                        `Cleaned up ${publicIds.length} images after upload failure`
+                    );
+                } catch (cleanupError) {
+                    logger.error(
+                        "Failed to cleanup images:",
+                        cleanupError.message
+                    );
+                }
+            }
+            throw uploadError;
         }
 
         // Add createdBy
         productData.createdBy = adminId;
 
         // Create product
-        const [product] = await Product.create([productData], {
-            session: localSession,
-        });
+        let product;
+        try {
+            [product] = await Product.create([productData], {
+                session: localSession,
+            });
+        } catch (createError) {
+            // Check for duplicate slug error
+            if (createError.code === 11000 && createError.keyPattern?.slug) {
+                throw new Error(
+                    `Product with slug "${productData.slug}" already exists`
+                );
+            }
+            throw createError;
+        }
 
         // Create variants
         const createdVariants = [];
@@ -172,44 +205,49 @@ export const createProduct = async (
  * Get all products with filtering and pagination
  */
 export const getAllProducts = async (filters = {}, pagination = {}) => {
-    const { page = 1, limit = 20 } = pagination;
-    const skip = (page - 1) * limit;
+    try {
+        const { page = 1, limit = 20 } = pagination;
+        const skip = (page - 1) * limit;
 
-    // Build aggregation pipeline
-    const pipeline = buildProductFilterPipeline(filters);
+        // Build aggregation pipeline
+        const pipeline = buildProductFilterPipeline(filters);
 
-    // Add pagination
-    pipeline.push({ $skip: skip });
-    pipeline.push({ $limit: limit });
+        // Add pagination
+        pipeline.push({ $skip: skip });
+        pipeline.push({ $limit: limit });
 
-    // Execute aggregation
-    const products = await Product.aggregate(pipeline);
+        // Execute aggregation
+        const products = await Product.aggregate(pipeline);
 
-    // Generate image URLs for all products
-    products.forEach((product) => {
-        if (product.images && product.images.length > 0) {
-            product.images = product.images.map((img) => ({
-                ...img,
-                urls: getImageVariants(img.publicId),
-            }));
-        }
-    });
+        // Generate image URLs for all products
+        products.forEach((product) => {
+            if (product.images && product.images.length > 0) {
+                product.images = product.images.map((img) => ({
+                    ...img,
+                    urls: getImageVariants(img.publicId),
+                }));
+            }
+        });
 
-    // Get total count
-    const countPipeline = buildProductFilterPipeline(filters);
-    countPipeline.push({ $count: "total" });
-    const countResult = await Product.aggregate(countPipeline);
-    const total = countResult[0]?.total || 0;
+        // Get total count
+        const countPipeline = buildProductFilterPipeline(filters);
+        countPipeline.push({ $count: "total" });
+        const countResult = await Product.aggregate(countPipeline);
+        const total = countResult[0]?.total || 0;
 
-    return {
-        data: products,
-        pagination: {
-            page,
-            limit,
-            total,
-            pages: Math.ceil(total / limit),
-        },
-    };
+        return {
+            data: products,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit),
+            },
+        };
+    } catch (error) {
+        logger.error("Get all products error:", error.message);
+        throw new Error(`Failed to retrieve products: ${error.message}`);
+    }
 };
 
 /**
@@ -221,7 +259,7 @@ export const getProductById = async (productId) => {
     );
 
     if (!product) {
-        throw new Error("Product not found");
+        throw new Error(`Product not found with ID: ${productId}`);
     }
 
     // Get all variants
@@ -264,7 +302,7 @@ export const getProductBySlug = async (slug) => {
     );
 
     if (!product) {
-        throw new Error("Product not found");
+        throw new Error(`Product not found with slug: ${slug}`);
     }
 
     // Get all variants
@@ -319,17 +357,28 @@ export const updateProduct = async (
             localSession.startTransaction();
         }
 
+        // Validate variants array if provided
+        if (variants && Array.isArray(variants) && variants.length === 0) {
+            throw new Error(
+                "Variants array cannot be empty. Omit the parameter if not updating variants."
+            );
+        }
+
         // Find product
         const product = await Product.findById(productId).session(localSession);
         if (!product) {
-            throw new Error("Product not found");
+            throw new Error(`Product not found with ID: ${productId}`);
         }
 
-        // Get category for SKU generation
+        // Get category for SKU generation and validate if changing
         const categoryId = productUpdates.category || product.category;
         const category = await Category.findById(categoryId).session(
             localSession
         );
+
+        if (!category) {
+            throw new Error(`Category not found with ID: ${categoryId}`);
+        }
 
         // Update slug if name changed
         if (productUpdates.name && productUpdates.name !== product.name) {
@@ -569,7 +618,12 @@ export const softDeleteProduct = async (productId, adminId) => {
     const product = await Product.findById(productId);
 
     if (!product) {
-        throw new Error("Product not found");
+        throw new Error(`Product not found with ID: ${productId}`);
+    }
+
+    // Check if already inactive
+    if (!product.isActive) {
+        throw new Error("Product is already inactive");
     }
 
     // Deactivate product with timestamp update
@@ -608,7 +662,7 @@ export const hardDeleteProduct = async (productId, adminId, session = null) => {
         // Find product
         const product = await Product.findById(productId).session(localSession);
         if (!product) {
-            throw new Error("Product not found");
+            throw new Error(`Product not found with ID: ${productId}`);
         }
 
         // Get all variants to delete their images
@@ -689,70 +743,108 @@ export const createVariant = async (
     imageFiles,
     adminId
 ) => {
-    // Validate product exists
-    const product = await Product.findById(productId).populate("category");
-    if (!product) {
-        throw new Error("Product not found");
-    }
+    const session = await mongoose.startSession();
+    let uploadedImagePublicIds = [];
 
-    // Validate attributes
-    if (variantData.attributes && variantData.attributes.length > 0) {
-        const attrValidation = validateAttributes(variantData.attributes);
-        if (!attrValidation.valid) {
-            throw new Error(attrValidation.message);
+    try {
+        session.startTransaction();
+
+        // Validate product exists
+        const product = await Product.findById(productId)
+            .populate("category")
+            .session(session);
+        if (!product) {
+            throw new Error(`Product not found with ID: ${productId}`);
         }
+
+        // Validate attributes
+        if (variantData.attributes && variantData.attributes.length > 0) {
+            const attrValidation = validateAttributes(variantData.attributes);
+            if (!attrValidation.valid) {
+                throw new Error(attrValidation.message);
+            }
+        }
+
+        // Generate SKU if not provided
+        if (!variantData.sku) {
+            const existingVariants = await ProductVariant.find({
+                product: productId,
+            }).session(session);
+            variantData.sku = await generateVariantSKU(
+                product.category.name,
+                product.name,
+                existingVariants.length + 1,
+                variantData.attributes || []
+            );
+        }
+
+        // Handle image uploads
+        if (imageFiles && imageFiles.length > 0) {
+            const slugBase = variantData.sku;
+            const imageBuffers = imageFiles.map((file) => file.buffer);
+            try {
+                const uploadedImages = await uploadMultipleImages(
+                    imageBuffers,
+                    "products/variants",
+                    slugBase
+                );
+
+                // Track uploaded publicIds for cleanup on failure
+                uploadedImagePublicIds = uploadedImages.map(
+                    (img) => img.publicId
+                );
+
+                // Format images for database
+                variantData.images = uploadedImages.map((img, index) => ({
+                    publicId: img.publicId,
+                    url: img.secureUrl,
+                    alt: `${product.name} variant`,
+                    sortOrder: index,
+                    isPrimary: index === 0,
+                }));
+            } catch (uploadError) {
+                throw new Error(`Image upload failed: ${uploadError.message}`);
+            }
+        }
+
+        // Set product reference
+        variantData.product = productId;
+        variantData.createdBy = adminId;
+
+        // Create variant
+        const variant = await ProductVariant.create([variantData], { session });
+
+        await session.commitTransaction();
+
+        // Generate URLs for variant images
+        const variantObj = variant[0].toObject();
+        if (variantObj.images && variantObj.images.length > 0) {
+            variantObj.images = variantObj.images.map((img) => ({
+                ...img,
+                urls: getImageVariants(img.publicId),
+            }));
+        }
+
+        return variantObj;
+    } catch (error) {
+        await session.abortTransaction();
+
+        // Cleanup uploaded images on failure
+        if (uploadedImagePublicIds.length > 0) {
+            try {
+                await deleteMultipleImages(uploadedImagePublicIds);
+            } catch (cleanupError) {
+                logger.error(
+                    "Failed to cleanup images after variant creation failure:",
+                    cleanupError.message
+                );
+            }
+        }
+
+        throw error;
+    } finally {
+        session.endSession();
     }
-
-    // Generate SKU if not provided
-    if (!variantData.sku) {
-        const existingVariants = await ProductVariant.find({
-            product: productId,
-        });
-        variantData.sku = await generateVariantSKU(
-            product.category.name,
-            product.name,
-            existingVariants.length + 1,
-            variantData.attributes || []
-        );
-    }
-
-    // Handle image uploads
-    if (imageFiles && imageFiles.length > 0) {
-        const slugBase = variantData.sku;
-        const imageBuffers = imageFiles.map((file) => file.buffer);
-        const uploadedImages = await uploadMultipleImages(
-            imageBuffers,
-            "products/variants",
-            slugBase
-        );
-
-        // Format images for database
-        variantData.images = uploadedImages.map((img, index) => ({
-            publicId: img.publicId,
-            url: img.secureUrl,
-            alt: `${product.name} variant`,
-            sortOrder: index,
-            isPrimary: index === 0,
-        }));
-    }
-
-    // Set product reference
-    variantData.product = productId;
-    variantData.createdBy = adminId;
-
-    // Create variant
-    const variant = await ProductVariant.create(variantData);
-
-    // Generate URLs for variant images
-    const variantObj = variant.toObject();
-    if (variantObj.images && variantObj.images.length > 0) {
-        variantObj.images = variantObj.images.map((img) => ({
-            ...img,
-            urls: getImageVariants(img.publicId),
-        }));
-    }
-
-    return variantObj;
 };
 
 /**
@@ -770,7 +862,7 @@ export const updateVariant = async (
     );
 
     if (!variant) {
-        throw new Error("Variant not found");
+        throw new Error(`Variant not found with ID: ${variantId}`);
     }
 
     // Validate attributes if provided
@@ -864,23 +956,25 @@ export const softDeleteVariant = async (productId, variantId, adminId) => {
         );
     }
 
-    // Deactivate variant with timestamp update
-    const variant = await ProductVariant.findOneAndUpdate(
-        {
-            _id: variantId,
-            product: productId,
-        },
-        {
-            isActive: false,
-            updatedBy: adminId,
-            updatedAt: new Date(),
-        },
-        { new: true }
-    );
+    // Find the variant first to check if already inactive
+    const variant = await ProductVariant.findOne({
+        _id: variantId,
+        product: productId,
+    });
 
     if (!variant) {
-        throw new Error("Variant not found");
+        throw new Error(`Variant not found with ID: ${variantId}`);
     }
+
+    if (!variant.isActive) {
+        throw new Error("Variant is already inactive");
+    }
+
+    // Deactivate variant with timestamp update
+    variant.isActive = false;
+    variant.updatedBy = adminId;
+    variant.updatedAt = new Date();
+    await variant.save();
 
     return { data: { message: "Variant deactivated successfully" } };
 };
@@ -907,7 +1001,7 @@ export const hardDeleteVariant = async (productId, variantId, adminId) => {
     });
 
     if (!variant) {
-        throw new Error("Variant not found");
+        throw new Error(`Variant not found with ID: ${variantId}`);
     }
 
     // Delete variant images from Cloudinary
@@ -939,13 +1033,22 @@ export const updateVariantStock = async (variantId, stockQuantity) => {
     const variant = await ProductVariant.findById(variantId);
 
     if (!variant) {
-        throw new Error("Variant not found");
+        throw new Error(`Variant not found with ID: ${variantId}`);
     }
 
     variant.stockQuantity = stockQuantity;
     await variant.save();
 
-    return variant;
+    // Return variant with image URLs
+    const variantObj = variant.toObject();
+    if (variantObj.images && variantObj.images.length > 0) {
+        variantObj.images = variantObj.images.map((img) => ({
+            ...img,
+            urls: getImageVariants(img.publicId),
+        }));
+    }
+
+    return variantObj;
 };
 
 /**
@@ -1096,7 +1199,16 @@ export const deleteProductImages = async (productId, publicIds, adminId) => {
         `Product images deleted: ${publicIds.join(", ")} by admin ${adminId}`
     );
 
-    return product;
+    // Return product with image URLs
+    const updatedProduct = product.toObject();
+    if (updatedProduct.images && updatedProduct.images.length > 0) {
+        updatedProduct.images = updatedProduct.images.map((img) => ({
+            ...img,
+            urls: getImageVariants(img.publicId),
+        }));
+    }
+
+    return updatedProduct;
 };
 
 /**
@@ -1194,5 +1306,14 @@ export const deleteVariantImages = async (variantId, publicIds, adminId) => {
         `Variant images deleted: ${publicIds.join(", ")} by admin ${adminId}`
     );
 
-    return variant;
+    // Return variant with image URLs
+    const updatedVariant = variant.toObject();
+    if (updatedVariant.images && updatedVariant.images.length > 0) {
+        updatedVariant.images = updatedVariant.images.map((img) => ({
+            ...img,
+            urls: getImageVariants(img.publicId),
+        }));
+    }
+
+    return updatedVariant;
 };

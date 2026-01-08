@@ -194,6 +194,23 @@ export const updateProductController = async (req, res) => {
             }
         }
 
+        // Validate deleteVariants array contains valid ObjectIds
+        if (
+            deleteVariants &&
+            Array.isArray(deleteVariants) &&
+            deleteVariants.length > 0
+        ) {
+            const invalidIds = deleteVariants.filter(
+                (id) => !id || !/^[0-9a-fA-F]{24}$/.test(id)
+            );
+            if (invalidIds.length > 0) {
+                return apiResponse.badRequest(
+                    res,
+                    "deleteVariants contains invalid IDs"
+                );
+            }
+        }
+
         // Parse deleteImages array (publicIds of images to delete)
         let deleteImages = req.body.deleteImages;
         if (typeof deleteImages === "string") {
@@ -201,6 +218,23 @@ export const updateProductController = async (req, res) => {
                 deleteImages = JSON.parse(deleteImages);
             } catch (e) {
                 deleteImages = [];
+            }
+        }
+
+        // Validate deleteImages array
+        if (
+            deleteImages &&
+            Array.isArray(deleteImages) &&
+            deleteImages.length > 0
+        ) {
+            const invalidPublicIds = deleteImages.filter(
+                (id) => !id || typeof id !== "string"
+            );
+            if (invalidPublicIds.length > 0) {
+                return apiResponse.badRequest(
+                    res,
+                    "deleteImages contains invalid publicIds"
+                );
             }
         }
 
