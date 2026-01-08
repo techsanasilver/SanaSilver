@@ -15,7 +15,7 @@ const productVariantSchema = new mongoose.Schema(
             trim: true,
             match: [
                 /^SS-[A-Z0-9]+-[A-Z0-9]+-\d{3,}-.+$/,
-                "Variant SKU must follow format: SS-CATEGORY-NAME-NUMBER-VARIANT (e.g., SS-RING-LOTUS-001-S7)",
+                "Variant SKU must follow format: SS-CATEGORY-NAME-NUMBER-VARIANT (e.g., SS-RING-LOTUS-001-S7 or SS-RING-LOTUS-001-V1)",
             ],
         },
         variantName: {
@@ -130,7 +130,26 @@ const productVariantSchema = new mongoose.Schema(
             min: [0, "Low stock threshold cannot be negative"],
         },
         images: {
-            type: [String],
+            type: [
+                {
+                    publicId: {
+                        type: String,
+                        required: true,
+                    },
+                    url: {
+                        type: String,
+                    },
+                    alt: {
+                        type: String,
+                        default: "",
+                    },
+                    sortOrder: {
+                        type: Number,
+                        default: 0,
+                    },
+                    _id: false,
+                },
+            ],
             default: [],
         },
         sortOrder: {
@@ -159,12 +178,12 @@ const productVariantSchema = new mongoose.Schema(
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: [true, "Created by user is required"],
+            ref: "Admin",
+            required: [true, "Created by admin is required"],
         },
         updatedBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Admin",
         },
     },
     {
@@ -247,6 +266,12 @@ productVariantSchema.methods.hasAttribute = function (key) {
 // ===== PRE-SAVE MIDDLEWARE =====
 
 productVariantSchema.pre("save", async function (next) {
+    // Validate MRP is greater than or equal to selling price
+    if (this.mrp && this.mrp < this.sellingPrice) {
+        return next(new Error("MRP cannot be less than selling price"));
+    }
+
+    // Ensure SKU is set
     if (!this.sku && this.product) {
         // This will be handled by the service layer which has access to Product data
         // Here we just ensure it's set
@@ -254,6 +279,7 @@ productVariantSchema.pre("save", async function (next) {
             return next(new Error("SKU is required"));
         }
     }
+
     next();
 });
 

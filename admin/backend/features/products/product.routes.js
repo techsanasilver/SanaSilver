@@ -14,6 +14,10 @@ import {
     updateVariantStockController,
     getVariantByIdController,
     getProductVariantsController,
+    uploadProductImagesController,
+    deleteProductImagesController,
+    uploadVariantImagesController,
+    deleteVariantImagesController,
 } from "./product.controller.js";
 import authMiddleware from "../../shared/middlewares/auth.middleware.js";
 import { requirePermission } from "../../shared/middlewares/role.middleware.js";
@@ -98,6 +102,7 @@ router.get("/:id", getProductByIdController);
 /**
  * @route   PUT /api/products/:id
  * @desc    Update product with variants (nested update)
+ *          Can also add new images via files and delete old images via deleteImages array
  * @access  Private (Admin)
  */
 router.put(
@@ -125,14 +130,45 @@ router.delete(
 );
 
 /**
- * @route   DELETE /api/products/:id/permanent
- * @desc    Hard delete product permanently
+ * @route   DELETE /api/products/:id/force
+ * @desc    Hard delete product (force delete - permanent)
  * @access  Private (Admin)
  */
 router.delete(
     "/:id/force",
     requirePermission("products.delete"),
     hardDeleteProductController
+);
+
+// ===== PRODUCT IMAGE ROUTES =====
+
+/**
+ * @route   POST /api/products/:id/images
+ * @desc    Upload/Add images to product
+ * @access  Private (Admin)
+ */
+router.post(
+    "/:id/images",
+    requirePermission("products.edit"),
+    uploadMultiple("images", 10),
+    validateImageUpload({
+        required: true,
+        minFiles: 1,
+        maxFiles: 10,
+        uploadType: "product",
+    }),
+    uploadProductImagesController
+);
+
+/**
+ * @route   DELETE /api/products/:id/images
+ * @desc    Delete specific images from product
+ * @access  Private (Admin)
+ */
+router.delete(
+    "/:id/images",
+    requirePermission("products.edit"),
+    deleteProductImagesController
 );
 
 // ===== VARIANT ROUTES =====
@@ -172,6 +208,7 @@ router.get("/variants/:variantId", getVariantByIdController);
 /**
  * @route   PUT /api/products/variants/:variantId
  * @desc    Update a single variant
+ *          Can also add new images via files and delete old images via deleteImages array
  * @access  Private (Admin)
  */
 router.put(
@@ -211,14 +248,45 @@ router.delete(
 );
 
 /**
- * @route   DELETE /api/products/:productId/variants/:variantId/permanent
- * @desc    Hard delete variant permanently
+ * @route   DELETE /api/products/:productId/variants/:variantId/force
+ * @desc    Hard delete variant (force delete - permanent)
  * @access  Private (Admin)
  */
 router.delete(
     "/:productId/variants/:variantId/force",
     requirePermission("products.delete"),
     hardDeleteVariantController
+);
+
+// ===== VARIANT IMAGE ROUTES =====
+
+/**
+ * @route   POST /api/products/variants/:variantId/images
+ * @desc    Upload/Add images to variant
+ * @access  Private (Admin)
+ */
+router.post(
+    "/variants/:variantId/images",
+    requirePermission("products.edit"),
+    uploadMultiple("images", 5),
+    validateImageUpload({
+        required: true,
+        minFiles: 1,
+        maxFiles: 5,
+        uploadType: "product",
+    }),
+    uploadVariantImagesController
+);
+
+/**
+ * @route   DELETE /api/products/variants/:variantId/images
+ * @desc    Delete specific images from variant
+ * @access  Private (Admin)
+ */
+router.delete(
+    "/variants/:variantId/images",
+    requirePermission("products.edit"),
+    deleteVariantImagesController
 );
 
 export default router;

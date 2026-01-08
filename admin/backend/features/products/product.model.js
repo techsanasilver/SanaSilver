@@ -54,7 +54,30 @@ const productSchema = new mongoose.Schema(
             default: 3,
         },
         images: {
-            type: [String],
+            type: [
+                {
+                    publicId: {
+                        type: String,
+                        required: true,
+                    },
+                    url: {
+                        type: String,
+                    },
+                    alt: {
+                        type: String,
+                        default: "",
+                    },
+                    sortOrder: {
+                        type: Number,
+                        default: 0,
+                    },
+                    isPrimary: {
+                        type: Boolean,
+                        default: false,
+                    },
+                    _id: false,
+                },
+            ],
             required: [true, "At least one image is required"],
             validate: {
                 validator: function (array) {
@@ -140,12 +163,12 @@ const productSchema = new mongoose.Schema(
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: [true, "Created by user is required"],
+            ref: "Admin",
+            required: [true, "Created by admin is required"],
         },
         updatedBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Admin",
         },
     },
     {

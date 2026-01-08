@@ -13,6 +13,10 @@ import {
     updateVariantStock,
     getVariantById,
     getProductVariants,
+    uploadProductImages,
+    deleteProductImages,
+    uploadVariantImages,
+    deleteVariantImages,
 } from "./product.service.js";
 import { parseFormDataVariants } from "./product.util.js";
 import apiResponse from "../../shared/utils/response.util.js";
@@ -34,15 +38,16 @@ export const createProductController = async (req, res) => {
         // Extract product data (exclude variants)
         const { variants: _, ...productData } = req.body;
 
-        // Handle image files
-        if (req.files && req.files.length > 0) {
-            productData.images = req.files.map(
-                (file) => file.path || file.filename
-            );
-        }
+        // Get uploaded image files
+        const imageFiles = req.files || [];
 
-        // Create product with variants
-        const product = await createProduct(productData, variants, adminId);
+        // Create product with variants and images
+        const product = await createProduct(
+            productData,
+            imageFiles,
+            variants,
+            adminId
+        );
 
         return apiResponse.created(
             res,
@@ -97,7 +102,7 @@ export const getAllProductsController = async (req, res) => {
             try {
                 filters.attributes = JSON.parse(attributes);
             } catch (e) {
-                return errorResponse(res, "Invalid attributes format", 400);
+                return apiResponse.badRequest(res, "Invalid attributes format");
             }
         }
 
@@ -189,20 +194,34 @@ export const updateProductController = async (req, res) => {
             }
         }
 
-        // Extract product data (exclude variants and deleteVariants)
-        const { variants: _, deleteVariants: __, ...productUpdates } = req.body;
-
-        // Handle image files
-        if (req.files && req.files.length > 0) {
-            productUpdates.images = req.files.map(
-                (file) => file.path || file.filename
-            );
+        // Parse deleteImages array (publicIds of images to delete)
+        let deleteImages = req.body.deleteImages;
+        if (typeof deleteImages === "string") {
+            try {
+                deleteImages = JSON.parse(deleteImages);
+            } catch (e) {
+                deleteImages = [];
+            }
         }
 
-        // Update product with variants
+        // Extract product data (exclude special fields)
+        const {
+            variants: _,
+            deleteVariants: __,
+            deleteImages: ___,
+            images: ____,
+            ...productUpdates
+        } = req.body;
+
+        // Get uploaded image files (if any)
+        const imageFiles = req.files || [];
+
+        // Update product with variants and images
         const product = await updateProduct(
             id,
             productUpdates,
+            imageFiles,
+            deleteImages || [],
             variants || [],
             deleteVariants || [],
             adminId
@@ -279,16 +298,17 @@ export const createVariantController = async (req, res) => {
     try {
         const { productId } = req.params;
         const adminId = req.admin._id;
-        const variantData = req.body;
+        const { images: _, ...variantData } = req.body;
 
-        // Handle image files
-        if (req.files && req.files.length > 0) {
-            variantData.images = req.files.map(
-                (file) => file.path || file.filename
-            );
-        }
+        // Get uploaded image files
+        const imageFiles = req.files || [];
 
-        const variant = await createVariant(productId, variantData, adminId);
+        const variant = await createVariant(
+            productId,
+            variantData,
+            imageFiles,
+            adminId
+        );
 
         return apiResponse.created(
             res,
@@ -311,16 +331,30 @@ export const updateVariantController = async (req, res) => {
     try {
         const { variantId } = req.params;
         const adminId = req.admin._id;
-        const updates = req.body;
 
-        // Handle image files
-        if (req.files && req.files.length > 0) {
-            updates.images = req.files.map(
-                (file) => file.path || file.filename
-            );
+        // Parse deleteImages array (publicIds of images to delete)
+        let deleteImages = req.body.deleteImages;
+        if (typeof deleteImages === "string") {
+            try {
+                deleteImages = JSON.parse(deleteImages);
+            } catch (e) {
+                deleteImages = [];
+            }
         }
 
-        const variant = await updateVariant(variantId, updates, adminId);
+        // Extract variant data (exclude special fields)
+        const { images: _, deleteImages: __, ...updates } = req.body;
+
+        // Get uploaded image files (if any)
+        const imageFiles = req.files || [];
+
+        const variant = await updateVariant(
+            variantId,
+            updates,
+            imageFiles,
+            deleteImages || [],
+            adminId
+        );
 
         return apiResponse.success(
             res,
@@ -441,6 +475,124 @@ export const getProductVariantsController = async (req, res) => {
         );
     } catch (error) {
         logger.error("Get product variants error:", error.message);
+        return apiResponse.error(res, error.message);
+    }
+};
+
+/**
+ * Upload/Add images to product
+ */
+export const uploadProductImagesController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const imageFiles = req.files;
+        const adminId = req.admin._id;
+
+        if (!imageFiles || imageFiles.length === 0) {
+            return apiResponse.badRequest(
+                res,
+                "At least one image file is required"
+            );
+        }
+
+        const product = await uploadProductImages(id, imageFiles, adminId);
+
+        return apiResponse.success(
+            res,
+            "Product images uploaded successfully",
+            product
+        );
+    } catch (error) {
+        logger.error("Upload product images error:", error.message);
+        return apiResponse.error(res, error.message);
+    }
+};
+
+/**
+ * Delete images from product
+ */
+export const deleteProductImagesController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { publicIds } = req.body;
+        const adminId = req.admin._id;
+
+        if (!publicIds || !Array.isArray(publicIds) || publicIds.length === 0) {
+            return apiResponse.badRequest(res, "publicIds array is required");
+        }
+
+        const product = await deleteProductImages(id, publicIds, adminId);
+
+        return apiResponse.success(
+            res,
+            "Product images deleted successfully",
+            product
+        );
+    } catch (error) {
+        logger.error("Delete product images error:", error.message);
+        return apiResponse.error(res, error.message);
+    }
+};
+
+/**
+ * Upload/Add images to variant
+ */
+export const uploadVariantImagesController = async (req, res) => {
+    try {
+        const { variantId } = req.params;
+        const imageFiles = req.files;
+        const adminId = req.admin._id;
+
+        if (!imageFiles || imageFiles.length === 0) {
+            return apiResponse.badRequest(
+                res,
+                "At least one image file is required"
+            );
+        }
+
+        const variant = await uploadVariantImages(
+            variantId,
+            imageFiles,
+            adminId
+        );
+
+        return apiResponse.success(
+            res,
+            "Variant images uploaded successfully",
+            variant
+        );
+    } catch (error) {
+        logger.error("Upload variant images error:", error.message);
+        return apiResponse.error(res, error.message);
+    }
+};
+
+/**
+ * Delete images from variant
+ */
+export const deleteVariantImagesController = async (req, res) => {
+    try {
+        const { variantId } = req.params;
+        const { publicIds } = req.body;
+        const adminId = req.admin._id;
+
+        if (!publicIds || !Array.isArray(publicIds) || publicIds.length === 0) {
+            return apiResponse.badRequest(res, "publicIds array is required");
+        }
+
+        const variant = await deleteVariantImages(
+            variantId,
+            publicIds,
+            adminId
+        );
+
+        return apiResponse.success(
+            res,
+            "Variant images deleted successfully",
+            variant
+        );
+    } catch (error) {
+        logger.error("Delete variant images error:", error.message);
         return apiResponse.error(res, error.message);
     }
 };
