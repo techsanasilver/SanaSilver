@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import Product from "./product.model.js";
 import ProductVariant from "./product-variant.model.js";
+import { isValidObjectId } from "../../shared/utils/objectid.util.js";
 
 /**
  * Generate a unique SKU for a product variant
@@ -231,15 +233,25 @@ export const buildProductFilterPipeline = (filters = {}) => {
     const productMatch = { isActive: true };
 
     if (filters.category) {
-        productMatch.category = filters.category;
+        // Convert category to ObjectId if it's a valid string
+        productMatch.category = isValidObjectId(filters.category)
+            ? new mongoose.Types.ObjectId(filters.category)
+            : filters.category;
     }
 
     if (filters.subcategory) {
-        productMatch.subcategory = filters.subcategory;
+        // Convert subcategory to ObjectId if it's a valid string
+        productMatch.subcategory = isValidObjectId(filters.subcategory)
+            ? new mongoose.Types.ObjectId(filters.subcategory)
+            : filters.subcategory;
     }
 
     if (filters.collections && filters.collections.length > 0) {
-        productMatch.collections = { $in: filters.collections };
+        // Convert collection IDs to ObjectIds if they're valid strings
+        const collectionIds = filters.collections.map((id) =>
+            isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : id
+        );
+        productMatch.collections = { $in: collectionIds };
     }
 
     if (filters.purity) {

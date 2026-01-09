@@ -29,11 +29,8 @@ export const createProductController = async (req, res) => {
     try {
         const adminId = req.admin._id;
 
-        // Parse nested variants from FormData (if sent as JSON string)
-        let variants = req.body.variants;
-        if (typeof variants === "string") {
-            variants = parseFormDataVariants(variants);
-        }
+        // Variants already parsed by middleware
+        const variants = req.body.variants;
 
         // Extract product data (exclude variants)
         const { variants: _, ...productData } = req.body;
@@ -178,21 +175,10 @@ export const updateProductController = async (req, res) => {
         const { id } = req.params;
         const adminId = req.admin._id;
 
-        // Parse nested variants from FormData (if sent as JSON string)
-        let variants = req.body.variants;
-        if (typeof variants === "string") {
-            variants = parseFormDataVariants(variants);
-        }
-
-        // Parse deleteVariants array
-        let deleteVariants = req.body.deleteVariants;
-        if (typeof deleteVariants === "string") {
-            try {
-                deleteVariants = JSON.parse(deleteVariants);
-            } catch (e) {
-                deleteVariants = [];
-            }
-        }
+        // Variants, deleteVariants, deleteImages already parsed by middleware
+        const variants = req.body.variants;
+        const deleteVariants = req.body.deleteVariants;
+        const deleteImages = req.body.deleteImages;
 
         // Validate deleteVariants array contains valid ObjectIds
         if (
@@ -208,16 +194,6 @@ export const updateProductController = async (req, res) => {
                     res,
                     "deleteVariants contains invalid IDs"
                 );
-            }
-        }
-
-        // Parse deleteImages array (publicIds of images to delete)
-        let deleteImages = req.body.deleteImages;
-        if (typeof deleteImages === "string") {
-            try {
-                deleteImages = JSON.parse(deleteImages);
-            } catch (e) {
-                deleteImages = [];
             }
         }
 
@@ -366,15 +342,8 @@ export const updateVariantController = async (req, res) => {
         const { variantId } = req.params;
         const adminId = req.admin._id;
 
-        // Parse deleteImages array (publicIds of images to delete)
-        let deleteImages = req.body.deleteImages;
-        if (typeof deleteImages === "string") {
-            try {
-                deleteImages = JSON.parse(deleteImages);
-            } catch (e) {
-                deleteImages = [];
-            }
-        }
+        // deleteImages already parsed by middleware
+        const deleteImages = req.body.deleteImages;
 
         // Extract variant data (exclude special fields)
         const { images: _, deleteImages: __, ...updates } = req.body;

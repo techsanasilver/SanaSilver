@@ -32,6 +32,7 @@ import {
     validateUpdateVariant,
     validateUpdateStock,
 } from "./product.validation.js";
+import { parseFormDataJSON } from "./product.middleware.js";
 
 const router = express.Router();
 
@@ -74,6 +75,7 @@ router.post(
         maxFiles: 10,
         uploadType: "product",
     }),
+    parseFormDataJSON,
     validate(validateCreateProduct),
     createProductController
 );
@@ -114,6 +116,7 @@ router.put(
         maxFiles: 10,
         uploadType: "product",
     }),
+    parseFormDataJSON,
     validate(validateUpdateProduct),
     updateProductController
 );
@@ -194,6 +197,7 @@ router.post(
         maxFiles: 5,
         uploadType: "product",
     }),
+    parseFormDataJSON,
     validate(validateCreateVariant),
     createVariantController
 );
@@ -220,6 +224,7 @@ router.put(
         maxFiles: 5,
         uploadType: "product",
     }),
+    parseFormDataJSON,
     validate(validateUpdateVariant),
     updateVariantController
 );
