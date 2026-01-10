@@ -390,38 +390,18 @@ export const updateProduct = async (
             productUpdates.slug = await generateSlug(productUpdates.name);
         }
 
-        // Handle image deletions
-        if (deleteImagePublicIds && deleteImagePublicIds.length > 0) {
-            // Ensure we're not deleting all images
-            const remainingImages = product.images.filter(
-                (img) => !deleteImagePublicIds.includes(img.publicId)
-            );
-            const newImagesCount = imageFiles?.length || 0;
-
-            if (remainingImages.length === 0 && newImagesCount === 0) {
-                throw new Error(
-                    "Cannot delete all images. Product must have at least one image."
-                );
-            }
-
-            // Delete from Cloudinary
-            await deleteMultipleImages(deleteImagePublicIds);
-
-            // Remove from product
-            product.images = remainingImages;
-        }
-
-        // Handle new image uploads
+        // Handle new image uploads FIRST (before deletion to ensure we always have images)
         if (imageFiles && imageFiles.length > 0) {
             const slugBase =
                 productUpdates.slug ||
                 product.slug ||
                 product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
             const imageBuffers = imageFiles.map((file) => file.buffer);
+            // Add timestamp to ensure unique publicIds even when re-uploading
             const uploadedImages = await uploadMultipleImages(
                 imageBuffers,
                 "products",
-                `prod_${slugBase}`
+                `prod_${slugBase}_${Date.now()}`
             );
 
             // Format and add new images
@@ -434,6 +414,27 @@ export const updateProduct = async (
             }));
 
             product.images = [...(product.images || []), ...newImages];
+        }
+
+        // Handle image deletions AFTER upload (so we always have images)
+        if (deleteImagePublicIds && deleteImagePublicIds.length > 0) {
+            // Calculate remaining images after deletion
+            const remainingImages = product.images.filter(
+                (img) => !deleteImagePublicIds.includes(img.publicId)
+            );
+
+            // Ensure we're not deleting all images
+            if (remainingImages.length === 0) {
+                throw new Error(
+                    "Cannot delete all images without uploading new ones. Product must have at least one image."
+                );
+            }
+
+            // Delete from Cloudinary
+            await deleteMultipleImages(deleteImagePublicIds);
+
+            // Remove from product
+            product.images = remainingImages;
         }
 
         // Re-adjust sortOrder and ensure one image is primary
