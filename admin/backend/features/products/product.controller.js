@@ -238,7 +238,9 @@ export const updateProductController = async (req, res) => {
             productUpdates,
             imageFiles,
             deleteImages || [],
-            variants || [],
+            variants && Array.isArray(variants) && variants.length > 0
+                ? variants
+                : undefined,
             deleteVariants || [],
             adminId
         );

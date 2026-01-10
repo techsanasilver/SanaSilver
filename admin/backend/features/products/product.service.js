@@ -344,7 +344,7 @@ export const updateProduct = async (
     productUpdates,
     imageFiles = [],
     deleteImagePublicIds = [],
-    variants = [],
+    variants = undefined,
     deleteVariantIds = [],
     adminId,
     session = null
@@ -357,8 +357,13 @@ export const updateProduct = async (
             localSession.startTransaction();
         }
 
-        // Validate variants array if provided
-        if (variants && Array.isArray(variants) && variants.length === 0) {
+        // Validate variants array if explicitly provided as empty array
+        if (
+            variants !== undefined &&
+            variants !== null &&
+            Array.isArray(variants) &&
+            variants.length === 0
+        ) {
             throw new Error(
                 "Variants array cannot be empty. Omit the parameter if not updating variants."
             );
@@ -445,61 +450,69 @@ export const updateProduct = async (
         Object.assign(product, productUpdates);
         await product.save({ session: localSession });
 
-        // Process variants
+        // Process variants (only if variants are provided)
         const updatedVariants = [];
 
-        // Handle variant updates and creates
-        for (let i = 0; i < variants.length; i++) {
-            const variantData = variants[i];
+        if (variants && Array.isArray(variants) && variants.length > 0) {
+            // Handle variant updates and creates
+            for (let i = 0; i < variants.length; i++) {
+                const variantData = variants[i];
 
-            // Validate attributes
-            if (variantData.attributes && variantData.attributes.length > 0) {
-                const attrValidation = validateAttributes(
-                    variantData.attributes
-                );
-                if (!attrValidation.valid) {
-                    throw new Error(
-                        `Variant ${i + 1}: ${attrValidation.message}`
+                // Validate attributes
+                if (
+                    variantData.attributes &&
+                    variantData.attributes.length > 0
+                ) {
+                    const attrValidation = validateAttributes(
+                        variantData.attributes
                     );
-                }
-            }
-
-            if (variantData._id) {
-                // Update existing variant
-                const variant = await ProductVariant.findById(
-                    variantData._id
-                ).session(localSession);
-                if (!variant) {
-                    throw new Error(
-                        `Variant with ID ${variantData._id} not found`
-                    );
+                    if (!attrValidation.valid) {
+                        throw new Error(
+                            `Variant ${i + 1}: ${attrValidation.message}`
+                        );
+                    }
                 }
 
-                variantData.updatedBy = adminId;
-                Object.assign(variant, variantData);
-                await variant.save({ session: localSession });
-                updatedVariants.push(variant);
-            } else {
-                // Create new variant
-                if (!variantData.sku) {
-                    const existingVariants = await ProductVariant.find({
-                        product: productId,
-                    }).session(localSession);
-                    variantData.sku = await generateVariantSKU(
-                        category.name,
-                        product.name,
-                        existingVariants.length + i + 1,
-                        variantData.attributes || []
+                if (variantData._id) {
+                    // Update existing variant
+                    const variant = await ProductVariant.findById(
+                        variantData._id
+                    ).session(localSession);
+                    if (!variant) {
+                        throw new Error(
+                            `Variant with ID ${variantData._id} not found`
+                        );
+                    }
+
+                    variantData.updatedBy = adminId;
+                    Object.assign(variant, variantData);
+                    await variant.save({ session: localSession });
+                    updatedVariants.push(variant);
+                } else {
+                    // Create new variant
+                    if (!variantData.sku) {
+                        const existingVariants = await ProductVariant.find({
+                            product: productId,
+                        }).session(localSession);
+                        variantData.sku = await generateVariantSKU(
+                            category.name,
+                            product.name,
+                            existingVariants.length + i + 1,
+                            variantData.attributes || []
+                        );
+                    }
+
+                    variantData.product = productId;
+                    variantData.createdBy = adminId;
+
+                    const [variant] = await ProductVariant.create(
+                        [variantData],
+                        {
+                            session: localSession,
+                        }
                     );
+                    updatedVariants.push(variant);
                 }
-
-                variantData.product = productId;
-                variantData.createdBy = adminId;
-
-                const [variant] = await ProductVariant.create([variantData], {
-                    session: localSession,
-                });
-                updatedVariants.push(variant);
             }
         }
 
