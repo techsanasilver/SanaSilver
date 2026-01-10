@@ -71,6 +71,9 @@ export const getAllProductsController = async (req, res) => {
             purity,
             isFeatured,
             gender,
+            gemstone,
+            occasion,
+            plating,
             minPrice,
             maxPrice,
             inStock,
@@ -88,6 +91,9 @@ export const getAllProductsController = async (req, res) => {
         if (isFeatured !== undefined)
             filters.isFeatured = isFeatured === "true";
         if (gender) filters.gender = gender;
+        if (gemstone) filters.gemstone = gemstone;
+        if (occasion) filters.occasion = occasion;
+        if (plating) filters.plating = plating;
         if (minPrice) filters.minPrice = parseFloat(minPrice);
         if (maxPrice) filters.maxPrice = parseFloat(maxPrice);
         if (inStock !== undefined) filters.inStock = inStock === "true";

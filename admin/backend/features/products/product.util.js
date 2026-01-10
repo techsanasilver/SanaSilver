@@ -262,8 +262,21 @@ export const buildProductFilterPipeline = (filters = {}) => {
         productMatch.isFeatured = filters.isFeatured;
     }
 
+    // Filter by product attributes (structured fields)
     if (filters.gender) {
         productMatch["attributes.gender"] = filters.gender;
+    }
+
+    if (filters.gemstone) {
+        productMatch["attributes.gemstone"] = filters.gemstone;
+    }
+
+    if (filters.occasion) {
+        productMatch["attributes.occasion"] = filters.occasion;
+    }
+
+    if (filters.plating) {
+        productMatch["attributes.plating"] = filters.plating;
     }
 
     if (filters.search) {
@@ -303,19 +316,27 @@ export const buildProductFilterPipeline = (filters = {}) => {
         variantMatch["variants.stockQuantity"] = { $gt: 0 };
     }
 
-    // Filter by variant attributes
+    // Filter by variant attributes - at least ONE variant must have ALL specified attributes
     if (filters.attributes && Object.keys(filters.attributes).length > 0) {
-        Object.entries(filters.attributes).forEach(([key, value]) => {
-            pipeline.push({
-                $match: {
-                    "variants.attributes": {
-                        $elemMatch: {
-                            key: { $regex: new RegExp(key, "i") },
-                            value: { $regex: new RegExp(value, "i") },
-                        },
+        // Build conditions that check if a single variant has all specified attributes
+        const attributeConditions = Object.entries(filters.attributes).map(
+            ([key, value]) => ({
+                key: { $regex: new RegExp(key, "i") },
+                value: { $regex: new RegExp(value, "i") },
+            })
+        );
+
+        // Use $elemMatch with $and to ensure ONE variant has ALL attributes
+        pipeline.push({
+            $match: {
+                variants: {
+                    $elemMatch: {
+                        $and: attributeConditions.map((condition) => ({
+                            attributes: { $elemMatch: condition },
+                        })),
                     },
                 },
-            });
+            },
         });
     }
 
