@@ -13,6 +13,7 @@ import adminRoutes from "./features/users/admin.routes.js";
 import categoryRoutes from "./features/categories/category.routes.js";
 import productRoutes from "./features/products/product.routes.js";
 import bannerRoutes from "./features/banners/banner.routes.js";
+import bulkOperationsRoutes from "./features/bulk-operations/bulk-operation.routes.js";
 // Add more feature route imports here as you create them
 
 dotenv.config();
@@ -47,6 +48,7 @@ app.use("/api/auth", adminRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/banners", bannerRoutes);
+app.use("/api/bulk-operations", bulkOperationsRoutes);
 // Add more feature routes here as you create them
 
 // Global error handler (must be last)
