@@ -9,7 +9,7 @@ import errorHandler from "./shared/middlewares/error.middleware.js";
 import connectDB from "./shared/config/db.config.js";
 
 // Import feature routes
-import adminRoutes from "./features/users/admin.routes.js";
+import adminRoutes from "./features/auth/admin.routes.js";
 import categoryRoutes from "./features/categories/category.routes.js";
 import productRoutes from "./features/products/product.routes.js";
 import bannerRoutes from "./features/banners/banner.routes.js";

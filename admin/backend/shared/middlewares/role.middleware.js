@@ -1,6 +1,6 @@
 import apiResponse from "../utils/response.util.js";
 import logger from "../utils/logger.util.js";
-import { hasPermission } from "../../features/users/admin.service.js";
+import { hasPermission } from "../../features/auth/admin.service.js";
 
 function requireRole(...allowedRoles) {
     return (req, res, next) => {

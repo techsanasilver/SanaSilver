@@ -7,7 +7,7 @@
 import jwt from "jsonwebtoken";
 import apiResponse from "../utils/response.util.js";
 import logger from "../utils/logger.util.js";
-import Admin from "../../features/users/admin.model.js";
+import Admin from "../../features/auth/admin.model.js";
 
 const authMiddleware = async (req, res, next) => {
     try {
