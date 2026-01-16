@@ -1,0 +1,33 @@
+1. Use TailwindCSS for styling, its already set up
+
+2. For main colors and fonts, set them up globally using tailwind v4 so that in the application we can use those variables
+
+3. React Router Dom for routing
+
+4. For global states, use context api for state management instead of Redux or something like that.
+
+5. All the global level tags like BrowserRouter, Context etc should be used in main.jsx so that App.jsx remains cleaner
+
+6. Use proper folder structure, components should go in components folder, and pages in pages folder. And use nested folder structure to group things, for example Home page's components can go in components/home
+
+7. Use axios for api calls, set up axios.js which handles tokens, refreshes etc so that we can directly call apis without handling these again and again
+
+8. Make proper api files like auth.api.js, profile.api.js etc which handles all the api calls
+
+9. Use logger utility to log instead of direct console.log
+
+10. Use Tab spacing/indentation of 4 spaces
+
+11. Make a Loader component in components/common and use that loader throughout the app wherever needed
+
+12. Use proper global error handler
+
+13. For testing frontend changes, dont start server, its already always running
+
+14. When importing other files, using functions of other files etc, ALWAYS make sure to read that file first, to know how that file is written before using it.
+
+15. Cookies based auth not localstorage
+
+16. Avoid using classes and objects, use/make functions the normal way
+
+17. never create documentation unless specified
