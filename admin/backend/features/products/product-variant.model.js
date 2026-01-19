@@ -158,19 +158,7 @@ const productVariantSchema = new mongoose.Schema(
         },
         sortOrder: {
             type: Number,
-            default: function () {
-                // Intelligent default based on attributes
-                const sizeAttr = this.attributes.find((attr) =>
-                    attr.key.toLowerCase().includes("size")
-                );
-                if (sizeAttr) {
-                    const sizeValue = parseFloat(sizeAttr.value);
-                    if (!isNaN(sizeValue)) {
-                        return sizeValue * 100; // e.g., size 7 → sortOrder 700
-                    }
-                }
-                return 999; // Default high number for no size
-            },
+            default: 0,
         },
         isActive: {
             type: Boolean,
@@ -194,7 +182,7 @@ const productVariantSchema = new mongoose.Schema(
         timestamps: true,
         toJSON: { virtuals: true },
         toObject: { virtuals: true },
-    }
+    },
 );
 
 // ===== VIRTUALS =====
@@ -246,7 +234,7 @@ productVariantSchema.virtual("effectivePrice").get(function () {
 productVariantSchema.virtual("profitMargin").get(function () {
     if (!this.costPrice || this.costPrice === 0) return null;
     return Math.round(
-        ((this.sellingPrice - this.costPrice) / this.costPrice) * 100
+        ((this.sellingPrice - this.costPrice) / this.costPrice) * 100,
     );
 });
 
@@ -255,7 +243,7 @@ productVariantSchema.virtual("profitMargin").get(function () {
 // Get specific attribute value
 productVariantSchema.methods.getAttributeValue = function (key) {
     const attr = this.attributes.find(
-        (a) => a.key.toLowerCase() === key.toLowerCase()
+        (a) => a.key.toLowerCase() === key.toLowerCase(),
     );
     return attr ? attr.value : null;
 };
@@ -263,7 +251,7 @@ productVariantSchema.methods.getAttributeValue = function (key) {
 // Check if has attribute
 productVariantSchema.methods.hasAttribute = function (key) {
     return this.attributes.some(
-        (a) => a.key.toLowerCase() === key.toLowerCase()
+        (a) => a.key.toLowerCase() === key.toLowerCase(),
     );
 };
 

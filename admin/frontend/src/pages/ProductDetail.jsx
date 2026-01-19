@@ -537,7 +537,10 @@ const ProductDetail = () => {
                                     <span className="font-medium">
                                         Created By:
                                     </span>{" "}
-                                    {product.createdBy}
+                                    {typeof product.createdBy === "object"
+                                        ? product.createdBy.name ||
+                                          product.createdBy.email
+                                        : product.createdBy}
                                 </p>
                             )}
                             {product.updatedBy && (
@@ -545,7 +548,10 @@ const ProductDetail = () => {
                                     <span className="font-medium">
                                         Updated By:
                                     </span>{" "}
-                                    {product.updatedBy}
+                                    {typeof product.updatedBy === "object"
+                                        ? product.updatedBy.name ||
+                                          product.updatedBy.email
+                                        : product.updatedBy}
                                 </p>
                             )}
                         </div>

@@ -1,8 +1,3 @@
-/**
- * Error Boundary Component
- * Catches JavaScript errors anywhere in the child component tree
- */
-
 import React, { Component } from "react";
 import logger from "../../utils/logger.util";
 import { logErrorToBoundary } from "../../utils/errorHandler.util";
@@ -58,7 +53,7 @@ class ErrorBoundary extends Component {
 
             // Default fallback UI
             return (
-                <div className="min-h-screen flex items-center justify-center bg-background p-4">
+                <div className="min-h-screen flex items-center justify-center bg-background p-4 min-w-screen">
                     <div className="max-w-md w-full bg-surface rounded-lg shadow-lg p-8 text-center">
                         <div className="mb-6">
                             <div className="w-16 h-16 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-4">

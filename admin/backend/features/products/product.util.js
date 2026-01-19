@@ -12,7 +12,7 @@ export const generateVariantSKU = async (
     categoryName,
     productName,
     variantIndex,
-    attributes
+    attributes,
 ) => {
     // Clean and format category and product name
     const catCode = categoryName
@@ -138,7 +138,7 @@ export const calculateVariantPrice = (
     silverRate,
     gstRate,
     gemstoneCharges = 0,
-    beautifyStrategy = "99"
+    beautifyStrategy = "99",
 ) => {
     // Metal value = weight * silverRate
     const metalValue = weight * silverRate;
@@ -249,7 +249,7 @@ export const buildProductFilterPipeline = (filters = {}) => {
     if (filters.collections && filters.collections.length > 0) {
         // Convert collection IDs to ObjectIds if they're valid strings
         const collectionIds = filters.collections.map((id) =>
-            isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : id
+            isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : id,
         );
         productMatch.collections = { $in: collectionIds };
     }
@@ -285,6 +285,38 @@ export const buildProductFilterPipeline = (filters = {}) => {
 
     pipeline.push({ $match: productMatch });
 
+    // Lookup category
+    pipeline.push({
+        $lookup: {
+            from: "categories",
+            localField: "category",
+            foreignField: "_id",
+            as: "categoryData",
+        },
+    });
+    pipeline.push({
+        $unwind: {
+            path: "$categoryData",
+            preserveNullAndEmptyArrays: true,
+        },
+    });
+
+    // Lookup subcategory
+    pipeline.push({
+        $lookup: {
+            from: "categories",
+            localField: "subcategory",
+            foreignField: "_id",
+            as: "subcategoryData",
+        },
+    });
+    pipeline.push({
+        $unwind: {
+            path: "$subcategoryData",
+            preserveNullAndEmptyArrays: true,
+        },
+    });
+
     // Lookup variants
     pipeline.push({
         $lookup: {
@@ -302,12 +334,12 @@ export const buildProductFilterPipeline = (filters = {}) => {
         variantMatch["variants.sellingPrice"] = {};
         if (filters.minPrice) {
             variantMatch["variants.sellingPrice"].$gte = parseFloat(
-                filters.minPrice
+                filters.minPrice,
             );
         }
         if (filters.maxPrice) {
             variantMatch["variants.sellingPrice"].$lte = parseFloat(
-                filters.maxPrice
+                filters.maxPrice,
             );
         }
     }
@@ -323,7 +355,7 @@ export const buildProductFilterPipeline = (filters = {}) => {
             ([key, value]) => ({
                 key: { $regex: new RegExp(key, "i") },
                 value: { $regex: new RegExp(value, "i") },
-            })
+            }),
         );
 
         // Use $elemMatch with $and to ensure ONE variant has ALL attributes
@@ -347,12 +379,58 @@ export const buildProductFilterPipeline = (filters = {}) => {
         });
     }
 
-    // Add min/max price and total stock
+    // Add min/max price and total stock, and format category/subcategory to only include essential fields
     pipeline.push({
         $addFields: {
             minPrice: { $min: "$variants.sellingPrice" },
             maxPrice: { $max: "$variants.sellingPrice" },
             totalStock: { $sum: "$variants.stockQuantity" },
+            category: {
+                $cond: {
+                    if: { $ifNull: ["$categoryData", false] },
+                    then: {
+                        _id: "$categoryData._id",
+                        name: "$categoryData.name",
+                        slug: "$categoryData.slug",
+                    },
+                    else: null,
+                },
+            },
+            subcategory: {
+                $cond: {
+                    if: { $ifNull: ["$subcategoryData", false] },
+                    then: {
+                        _id: "$subcategoryData._id",
+                        name: "$subcategoryData.name",
+                        slug: "$subcategoryData.slug",
+                    },
+                    else: null,
+                },
+            },
+            // Include only essential variant fields
+            variants: {
+                $map: {
+                    input: "$variants",
+                    as: "variant",
+                    in: {
+                        _id: "$$variant._id",
+                        variantName: "$$variant.variantName",
+                        sku: "$$variant.sku",
+                        attributes: "$$variant.attributes",
+                        sellingPrice: "$$variant.sellingPrice",
+                        stockQuantity: "$$variant.stockQuantity",
+                        isActive: "$$variant.isActive",
+                    },
+                },
+            },
+        },
+    });
+
+    // Remove temporary fields
+    pipeline.push({
+        $project: {
+            categoryData: 0,
+            subcategoryData: 0,
         },
     });
 

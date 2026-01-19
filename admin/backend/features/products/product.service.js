@@ -24,7 +24,7 @@ export const createProduct = async (
     imageFiles,
     variants,
     adminId,
-    session = null
+    session = null,
 ) => {
     const isExternalSession = !!session;
     const localSession = session || (await mongoose.startSession());
@@ -41,11 +41,11 @@ export const createProduct = async (
 
         // Validate category exists
         const category = await Category.findById(productData.category).session(
-            localSession
+            localSession,
         );
         if (!category) {
             throw new Error(
-                `Category not found with ID: ${productData.category}`
+                `Category not found with ID: ${productData.category}`,
             );
         }
 
@@ -63,7 +63,7 @@ export const createProduct = async (
                 uploadedImages = await uploadMultipleImages(
                     imageBuffers,
                     "products",
-                    `prod_${slugBase}`
+                    `prod_${slugBase}`,
                 );
 
                 // Format images for database
@@ -87,12 +87,12 @@ export const createProduct = async (
                 try {
                     await deleteMultipleImages(publicIds);
                     logger.info(
-                        `Cleaned up ${publicIds.length} images after upload failure`
+                        `Cleaned up ${publicIds.length} images after upload failure`,
                     );
                 } catch (cleanupError) {
                     logger.error(
                         "Failed to cleanup images:",
-                        cleanupError.message
+                        cleanupError.message,
                     );
                 }
             }
@@ -112,7 +112,7 @@ export const createProduct = async (
             // Check for duplicate slug error
             if (createError.code === 11000 && createError.keyPattern?.slug) {
                 throw new Error(
-                    `Product with slug "${productData.slug}" already exists`
+                    `Product with slug "${productData.slug}" already exists`,
                 );
             }
             throw createError;
@@ -126,11 +126,11 @@ export const createProduct = async (
             // Validate attributes
             if (variantData.attributes && variantData.attributes.length > 0) {
                 const attrValidation = validateAttributes(
-                    variantData.attributes
+                    variantData.attributes,
                 );
                 if (!attrValidation.valid) {
                     throw new Error(
-                        `Variant ${i + 1}: ${attrValidation.message}`
+                        `Variant ${i + 1}: ${attrValidation.message}`,
                     );
                 }
             }
@@ -141,8 +141,16 @@ export const createProduct = async (
                     category.name,
                     product.name,
                     i + 1,
-                    variantData.attributes || []
+                    variantData.attributes || [],
                 );
+            }
+
+            // Set sortOrder if not provided (sequential: 0, 1, 2, 3...)
+            if (
+                variantData.sortOrder === undefined ||
+                variantData.sortOrder === null
+            ) {
+                variantData.sortOrder = i;
             }
 
             // Set product reference
@@ -172,7 +180,7 @@ export const createProduct = async (
                 (img) => ({
                     ...img,
                     urls: getImageVariants(img.publicId),
-                })
+                }),
             );
         }
 
@@ -254,9 +262,10 @@ export const getAllProducts = async (filters = {}, pagination = {}) => {
  * Get product by ID with variants
  */
 export const getProductById = async (productId) => {
-    const product = await Product.findById(productId).populate(
-        "category subcategory"
-    );
+    const product = await Product.findById(productId)
+        .populate("category subcategory")
+        .populate("createdBy", "name email")
+        .populate("updatedBy", "name email");
 
     if (!product) {
         throw new Error(`Product not found with ID: ${productId}`);
@@ -269,6 +278,24 @@ export const getProductById = async (productId) => {
     });
 
     const productWithVariants = product.toObject();
+
+    // Calculate minPrice, maxPrice, and totalStock
+    if (variants && variants.length > 0) {
+        productWithVariants.minPrice = Math.min(
+            ...variants.map((v) => v.sellingPrice),
+        );
+        productWithVariants.maxPrice = Math.max(
+            ...variants.map((v) => v.sellingPrice),
+        );
+        productWithVariants.totalStock = variants.reduce(
+            (sum, v) => sum + (v.stockQuantity || 0),
+            0,
+        );
+    } else {
+        productWithVariants.minPrice = null;
+        productWithVariants.maxPrice = null;
+        productWithVariants.totalStock = 0;
+    }
 
     // Generate URLs for product images
     if (productWithVariants.images && productWithVariants.images.length > 0) {
@@ -297,9 +324,10 @@ export const getProductById = async (productId) => {
  * Get product by slug with variants
  */
 export const getProductBySlug = async (slug) => {
-    const product = await Product.findOne({ slug, isActive: true }).populate(
-        "category subcategory"
-    );
+    const product = await Product.findOne({ slug, isActive: true })
+        .populate("category subcategory")
+        .populate("createdBy", "name email")
+        .populate("updatedBy", "name email");
 
     if (!product) {
         throw new Error(`Product not found with slug: ${slug}`);
@@ -312,6 +340,24 @@ export const getProductBySlug = async (slug) => {
     });
 
     const productWithVariants = product.toObject();
+
+    // Calculate minPrice, maxPrice, and totalStock
+    if (variants && variants.length > 0) {
+        productWithVariants.minPrice = Math.min(
+            ...variants.map((v) => v.sellingPrice),
+        );
+        productWithVariants.maxPrice = Math.max(
+            ...variants.map((v) => v.sellingPrice),
+        );
+        productWithVariants.totalStock = variants.reduce(
+            (sum, v) => sum + (v.stockQuantity || 0),
+            0,
+        );
+    } else {
+        productWithVariants.minPrice = null;
+        productWithVariants.maxPrice = null;
+        productWithVariants.totalStock = 0;
+    }
 
     // Generate URLs for product images
     if (productWithVariants.images && productWithVariants.images.length > 0) {
@@ -347,7 +393,7 @@ export const updateProduct = async (
     variants = undefined,
     deleteVariantIds = [],
     adminId,
-    session = null
+    session = null,
 ) => {
     const isExternalSession = !!session;
     const localSession = session || (await mongoose.startSession());
@@ -365,7 +411,7 @@ export const updateProduct = async (
             variants.length === 0
         ) {
             throw new Error(
-                "Variants array cannot be empty. Omit the parameter if not updating variants."
+                "Variants array cannot be empty. Omit the parameter if not updating variants.",
             );
         }
 
@@ -377,9 +423,8 @@ export const updateProduct = async (
 
         // Get category for SKU generation and validate if changing
         const categoryId = productUpdates.category || product.category;
-        const category = await Category.findById(categoryId).session(
-            localSession
-        );
+        const category =
+            await Category.findById(categoryId).session(localSession);
 
         if (!category) {
             throw new Error(`Category not found with ID: ${categoryId}`);
@@ -401,7 +446,7 @@ export const updateProduct = async (
             const uploadedImages = await uploadMultipleImages(
                 imageBuffers,
                 "products",
-                `prod_${slugBase}_${Date.now()}`
+                `prod_${slugBase}_${Date.now()}`,
             );
 
             // Format and add new images
@@ -420,13 +465,13 @@ export const updateProduct = async (
         if (deleteImagePublicIds && deleteImagePublicIds.length > 0) {
             // Calculate remaining images after deletion
             const remainingImages = product.images.filter(
-                (img) => !deleteImagePublicIds.includes(img.publicId)
+                (img) => !deleteImagePublicIds.includes(img.publicId),
             );
 
             // Ensure we're not deleting all images
             if (remainingImages.length === 0) {
                 throw new Error(
-                    "Cannot delete all images without uploading new ones. Product must have at least one image."
+                    "Cannot delete all images without uploading new ones. Product must have at least one image.",
                 );
             }
 
@@ -465,11 +510,11 @@ export const updateProduct = async (
                     variantData.attributes.length > 0
                 ) {
                     const attrValidation = validateAttributes(
-                        variantData.attributes
+                        variantData.attributes,
                     );
                     if (!attrValidation.valid) {
                         throw new Error(
-                            `Variant ${i + 1}: ${attrValidation.message}`
+                            `Variant ${i + 1}: ${attrValidation.message}`,
                         );
                     }
                 }
@@ -477,11 +522,11 @@ export const updateProduct = async (
                 if (variantData._id) {
                     // Update existing variant
                     const variant = await ProductVariant.findById(
-                        variantData._id
+                        variantData._id,
                     ).session(localSession);
                     if (!variant) {
                         throw new Error(
-                            `Variant with ID ${variantData._id} not found`
+                            `Variant with ID ${variantData._id} not found`,
                         );
                     }
 
@@ -499,8 +544,19 @@ export const updateProduct = async (
                             category.name,
                             product.name,
                             existingVariants.length + i + 1,
-                            variantData.attributes || []
+                            variantData.attributes || [],
                         );
+                    }
+
+                    // Set sortOrder if not provided
+                    if (
+                        variantData.sortOrder === undefined ||
+                        variantData.sortOrder === null
+                    ) {
+                        const existingVariants = await ProductVariant.find({
+                            product: productId,
+                        }).session(localSession);
+                        variantData.sortOrder = existingVariants.length + i;
                     }
 
                     variantData.product = productId;
@@ -510,7 +566,7 @@ export const updateProduct = async (
                         [variantData],
                         {
                             session: localSession,
-                        }
+                        },
                     );
                     updatedVariants.push(variant);
                 }
@@ -543,7 +599,7 @@ export const updateProduct = async (
                     _id: { $in: deleteVariantIds },
                     product: productId,
                 },
-                { session: localSession }
+                { session: localSession },
             );
         }
 
@@ -567,7 +623,7 @@ export const updateProduct = async (
             } catch (imgError) {
                 logger.error(
                     "Failed to delete variant images from Cloudinary:",
-                    imgError.message
+                    imgError.message,
                 );
             }
         }
@@ -589,7 +645,7 @@ export const updateProduct = async (
                 (img) => ({
                     ...img,
                     urls: getImageVariants(img.publicId),
-                })
+                }),
             );
         }
 
@@ -606,7 +662,7 @@ export const updateProduct = async (
                     }));
                 }
                 return variantObj;
-            }
+            },
         );
 
         return productWithVariants;
@@ -653,7 +709,7 @@ export const softDeleteProduct = async (productId, adminId) => {
             isActive: false,
             updatedBy: adminId,
             updatedAt: new Date(),
-        }
+        },
     );
 
     return {
@@ -710,7 +766,7 @@ export const hardDeleteProduct = async (productId, adminId, session = null) => {
         // Delete all variants
         await ProductVariant.deleteMany(
             { product: productId },
-            { session: localSession }
+            { session: localSession },
         );
 
         // Delete product
@@ -728,7 +784,7 @@ export const hardDeleteProduct = async (productId, adminId, session = null) => {
                 // Log but don't fail the operation
                 logger.error(
                     "Failed to delete some images from Cloudinary:",
-                    imgError.message
+                    imgError.message,
                 );
             }
         }
@@ -755,7 +811,7 @@ export const createVariant = async (
     productId,
     variantData,
     imageFiles,
-    adminId
+    adminId,
 ) => {
     const session = await mongoose.startSession();
     let uploadedImagePublicIds = [];
@@ -788,7 +844,7 @@ export const createVariant = async (
                 product.category.name,
                 product.name,
                 existingVariants.length + 1,
-                variantData.attributes || []
+                variantData.attributes || [],
             );
         }
 
@@ -800,12 +856,12 @@ export const createVariant = async (
                 const uploadedImages = await uploadMultipleImages(
                     imageBuffers,
                     "products/variants",
-                    slugBase
+                    slugBase,
                 );
 
                 // Track uploaded publicIds for cleanup on failure
                 uploadedImagePublicIds = uploadedImages.map(
-                    (img) => img.publicId
+                    (img) => img.publicId,
                 );
 
                 // Format images for database
@@ -850,7 +906,7 @@ export const createVariant = async (
             } catch (cleanupError) {
                 logger.error(
                     "Failed to cleanup images after variant creation failure:",
-                    cleanupError.message
+                    cleanupError.message,
                 );
             }
         }
@@ -869,11 +925,10 @@ export const updateVariant = async (
     updates,
     imageFiles = [],
     deleteImagePublicIds = [],
-    adminId
+    adminId,
 ) => {
-    const variant = await ProductVariant.findById(variantId).populate(
-        "product"
-    );
+    const variant =
+        await ProductVariant.findById(variantId).populate("product");
 
     if (!variant) {
         throw new Error(`Variant not found with ID: ${variantId}`);
@@ -891,7 +946,7 @@ export const updateVariant = async (
     if (deleteImagePublicIds && deleteImagePublicIds.length > 0) {
         // Filter out images to delete
         const remainingImages = variant.images.filter(
-            (img) => !deleteImagePublicIds.includes(img.publicId)
+            (img) => !deleteImagePublicIds.includes(img.publicId),
         );
         const newImagesCount = imageFiles?.length || 0;
 
@@ -910,7 +965,7 @@ export const updateVariant = async (
         const uploadedImages = await uploadMultipleImages(
             imageBuffers,
             "products/variants",
-            slugBase
+            slugBase,
         );
 
         // Format and add new images
@@ -966,7 +1021,7 @@ export const softDeleteVariant = async (productId, variantId, adminId) => {
 
     if (activeVariantCount <= 1) {
         throw new Error(
-            "Cannot deactivate the last active variant. Product must have at least one active variant."
+            "Cannot deactivate the last active variant. Product must have at least one active variant.",
         );
     }
 
@@ -1004,7 +1059,7 @@ export const hardDeleteVariant = async (productId, variantId, adminId) => {
 
     if (variantCount <= 1) {
         throw new Error(
-            "Cannot delete the last variant. Product must have at least one variant."
+            "Cannot delete the last variant. Product must have at least one variant.",
         );
     }
 
@@ -1031,7 +1086,7 @@ export const hardDeleteVariant = async (productId, variantId, adminId) => {
                 // Log but don't fail the operation
                 logger.error(
                     "Failed to delete variant images from Cloudinary:",
-                    imgError.message
+                    imgError.message,
                 );
             }
         }
@@ -1131,7 +1186,7 @@ export const uploadProductImages = async (productId, imageFiles, adminId) => {
     const uploadedImages = await uploadMultipleImages(
         imageBuffers,
         "products",
-        `prod_${slugBase}`
+        `prod_${slugBase}`,
     );
 
     // Format and add new images to existing images array
@@ -1177,7 +1232,7 @@ export const deleteProductImages = async (productId, publicIds, adminId) => {
 
     // Filter out images to delete
     const imagesToDelete = product.images.filter((img) =>
-        publicIds.includes(img.publicId)
+        publicIds.includes(img.publicId),
     );
 
     if (imagesToDelete.length === 0) {
@@ -1187,7 +1242,7 @@ export const deleteProductImages = async (productId, publicIds, adminId) => {
     // Don't allow deleting all images
     if (imagesToDelete.length === product.images.length) {
         throw new Error(
-            "Cannot delete all images. Product must have at least one image."
+            "Cannot delete all images. Product must have at least one image.",
         );
     }
 
@@ -1196,7 +1251,7 @@ export const deleteProductImages = async (productId, publicIds, adminId) => {
 
     // Remove from product
     product.images = product.images.filter(
-        (img) => !publicIds.includes(img.publicId)
+        (img) => !publicIds.includes(img.publicId),
     );
 
     // Re-adjust sortOrder and ensure one image is primary
@@ -1210,7 +1265,7 @@ export const deleteProductImages = async (productId, publicIds, adminId) => {
     await product.save();
 
     logger.info(
-        `Product images deleted: ${publicIds.join(", ")} by admin ${adminId}`
+        `Product images deleted: ${publicIds.join(", ")} by admin ${adminId}`,
     );
 
     // Return product with image URLs
@@ -1229,9 +1284,8 @@ export const deleteProductImages = async (productId, publicIds, adminId) => {
  * Upload/Add images to variant
  */
 export const uploadVariantImages = async (variantId, imageFiles, adminId) => {
-    const variant = await ProductVariant.findById(variantId).populate(
-        "product"
-    );
+    const variant =
+        await ProductVariant.findById(variantId).populate("product");
 
     if (!variant) {
         throw new Error("Variant not found");
@@ -1243,7 +1297,7 @@ export const uploadVariantImages = async (variantId, imageFiles, adminId) => {
     const uploadedImages = await uploadMultipleImages(
         imageBuffers,
         "products/variants",
-        slugBase
+        slugBase,
     );
 
     // Format and add new images
@@ -1289,7 +1343,7 @@ export const deleteVariantImages = async (variantId, publicIds, adminId) => {
 
     // Filter out images to delete
     const imagesToDelete = variant.images.filter((img) =>
-        publicIds.includes(img.publicId)
+        publicIds.includes(img.publicId),
     );
 
     if (imagesToDelete.length === 0) {
@@ -1301,7 +1355,7 @@ export const deleteVariantImages = async (variantId, publicIds, adminId) => {
 
     // Remove from variant
     variant.images = variant.images.filter(
-        (img) => !publicIds.includes(img.publicId)
+        (img) => !publicIds.includes(img.publicId),
     );
 
     // Re-adjust sortOrder and primary if needed
@@ -1317,7 +1371,7 @@ export const deleteVariantImages = async (variantId, publicIds, adminId) => {
     await variant.save();
 
     logger.info(
-        `Variant images deleted: ${publicIds.join(", ")} by admin ${adminId}`
+        `Variant images deleted: ${publicIds.join(", ")} by admin ${adminId}`,
     );
 
     // Return variant with image URLs
