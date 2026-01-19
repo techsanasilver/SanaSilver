@@ -31,10 +31,9 @@ const getISTTimestamp = () => {
     return `${day}-${month}-${year} ${hours}:${minutes}:${seconds} IST`;
 };
 
-const formatMessage = (level, message, ...args) => {
+const formatMessage = (level, message) => {
     const timestamp = getISTTimestamp();
-    const formattedArgs = args.length > 0 ? JSON.stringify(args, null, 2) : "";
-    return `[${level}] ${timestamp} - ${message} ${formattedArgs}`.trim();
+    return `[${level}] ${timestamp} - ${message}`;
 };
 
 const logger = {
@@ -44,7 +43,15 @@ const logger = {
      */
     debug: (message, ...args) => {
         if (isDevelopment) {
-            console.debug(formatMessage("DEBUG", message, ...args));
+            if (args.length > 0) {
+                console.groupCollapsed(formatMessage("DEBUG", message));
+                args.forEach((arg, index) => {
+                    console.log(`Arg ${index + 1}:`, arg);
+                });
+                console.groupEnd();
+            } else {
+                console.debug(formatMessage("DEBUG", message));
+            }
         }
     },
 
@@ -53,7 +60,15 @@ const logger = {
      * Use for: Important operational events, user actions, system state changes
      */
     info: (message, ...args) => {
-        console.log(formatMessage("INFO", message, ...args));
+        if (args.length > 0) {
+            console.groupCollapsed(formatMessage("INFO", message));
+            args.forEach((arg, index) => {
+                console.log(`Data ${index + 1}:`, arg);
+            });
+            console.groupEnd();
+        } else {
+            console.log(formatMessage("INFO", message));
+        }
     },
 
     /**
@@ -61,7 +76,15 @@ const logger = {
      * Use for: Potentially harmful situations, deprecated features
      */
     warn: (message, ...args) => {
-        console.warn(formatMessage("WARN", message, ...args));
+        if (args.length > 0) {
+            console.groupCollapsed(formatMessage("WARN", message));
+            args.forEach((arg, index) => {
+                console.warn(`Data ${index + 1}:`, arg);
+            });
+            console.groupEnd();
+        } else {
+            console.warn(formatMessage("WARN", message));
+        }
     },
 
     /**
@@ -69,7 +92,15 @@ const logger = {
      * Use for: Error events, exceptions, critical issues
      */
     error: (message, ...args) => {
-        console.error(formatMessage("ERROR", message, ...args));
+        if (args.length > 0) {
+            console.groupCollapsed(formatMessage("ERROR", message));
+            args.forEach((arg, index) => {
+                console.error(`Error ${index + 1}:`, arg);
+            });
+            console.groupEnd();
+        } else {
+            console.error(formatMessage("ERROR", message));
+        }
     },
 
     /**
@@ -78,7 +109,15 @@ const logger = {
      */
     test: (message, ...args) => {
         if (isDevelopment) {
-            console.log(formatMessage("TEST", message, ...args));
+            if (args.length > 0) {
+                console.groupCollapsed(formatMessage("TEST", message));
+                args.forEach((arg, index) => {
+                    console.log(`Test Data ${index + 1}:`, arg);
+                });
+                console.groupEnd();
+            } else {
+                console.log(formatMessage("TEST", message));
+            }
         }
     },
 
@@ -86,16 +125,19 @@ const logger = {
      * API Request logs - ONLY in development
      * Use for: Logging outgoing API requests
      */
-    apiRequest: (method, url, data = null) => {
+    apiRequest: (method, url, params = null, data = null) => {
         if (isDevelopment) {
             console.groupCollapsed(
                 formatMessage(
                     "API REQUEST",
-                    `${method?.toUpperCase() || "UNKNOWN"} ${url}`
-                )
+                    `${method?.toUpperCase() || "UNKNOWN"} ${url}`,
+                ),
             );
+            if (params && Object.keys(params).length > 0) {
+                console.log("Params:", params);
+            }
             if (data) {
-                console.log("Data:", JSON.stringify(data, null, 2));
+                console.log("Body:", data);
             }
             console.groupEnd();
         }
@@ -111,11 +153,11 @@ const logger = {
             console.groupCollapsed(
                 formatMessage(
                     isError ? "API ERROR" : "API RESPONSE",
-                    `${method?.toUpperCase() || "UNKNOWN"} ${url} (${status})`
-                )
+                    `${method?.toUpperCase() || "UNKNOWN"} ${url} (${status})`,
+                ),
             );
             if (data) {
-                console.log("Data:", JSON.stringify(data, null, 2));
+                console.log("Response:", data);
             }
             console.groupEnd();
         }

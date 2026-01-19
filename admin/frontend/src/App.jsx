@@ -5,6 +5,10 @@ import PublicRoute from "./components/common/PublicRoute";
 import Layout from "./components/layout/Layout";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
+import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
+import AddProduct from "./pages/AddProduct";
+import EditProduct from "./pages/EditProduct";
 import Unauthorized from "./pages/Unauthorized";
 
 const App = () => {
@@ -30,7 +34,14 @@ const App = () => {
                 }
             >
                 <Route path="/" element={<Home />} />
-                <Route path="/products" element={<div>Products Page</div>} />
+
+                {/* Products Routes */}
+                <Route path="/products" element={<Products />} />
+                <Route path="/products/add" element={<AddProduct />} />
+                <Route path="/products/:id" element={<ProductDetail />} />
+                <Route path="/products/:id/edit" element={<EditProduct />} />
+
+                {/* Other Routes */}
                 <Route path="/orders" element={<div>Orders Page</div>} />
                 <Route path="/customers" element={<div>Customers Page</div>} />
                 <Route

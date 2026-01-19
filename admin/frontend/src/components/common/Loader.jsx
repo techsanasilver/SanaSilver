@@ -65,7 +65,7 @@ const Loader = ({
 
     // Inline loader
     return (
-        <div className="flex items-center gap-3">
+        <div className=" w-full h-full flex items-center justify-center gap-3">
             <div className={spinnerClasses} />
             {text && (
                 <span className={`${textSizeClasses[size]} text-text`}>
