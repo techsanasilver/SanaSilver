@@ -255,8 +255,8 @@ const ProductDetail = () => {
                             <h3 className="text-sm text-text-secondary mb-1">
                                 Price Range
                             </h3>
-                            <p className="text-3xl font-bold text-primary">
-                                ${formatPrice(product.minPrice)} - $
+                            <p className="text-2xl font-bold text-primary">
+                                {formatPrice(product.minPrice)} -{" "}
                                 {formatPrice(product.maxPrice)}
                             </p>
                         </div>

@@ -8,13 +8,12 @@ import {
     MdDelete,
     MdVisibility,
     MdClear,
-    MdKeyboardArrowLeft,
-    MdKeyboardArrowRight,
 } from "react-icons/md";
 import { getAllProducts } from "../api/products.api";
 import { handleApiError } from "../utils/axios";
 import logger from "../utils/logger.util";
 import Loader from "../components/common/Loader";
+import Pagination from "../components/common/Pagination";
 
 const Products = () => {
     const navigate = useNavigate();
@@ -32,8 +31,20 @@ const Products = () => {
         hasPrevPage: false,
     });
 
-    // Filter state
-    const [filters, setFilters] = useState({
+    // Separate draft filters (user input) from applied filters (API calls)
+    const [draftFilters, setDraftFilters] = useState({
+        search: "",
+        purity: "",
+        isFeatured: "",
+        isActive: "",
+        gender: "",
+        minPrice: "",
+        maxPrice: "",
+        inStock: "",
+    });
+
+    // Applied filters - these trigger API calls
+    const [appliedFilters, setAppliedFilters] = useState({
         search: "",
         purity: "",
         isFeatured: "",
@@ -55,15 +66,15 @@ const Products = () => {
             setLoading(true);
             setError(null);
 
-            // Build query params
+            // Build query params from appliedFilters
             const params = {};
-            Object.keys(filters).forEach((key) => {
+            Object.keys(appliedFilters).forEach((key) => {
                 if (
-                    filters[key] !== "" &&
-                    filters[key] !== null &&
-                    filters[key] !== undefined
+                    appliedFilters[key] !== "" &&
+                    appliedFilters[key] !== null &&
+                    appliedFilters[key] !== undefined
                 ) {
-                    params[key] = filters[key];
+                    params[key] = appliedFilters[key];
                 }
             });
 
@@ -84,29 +95,45 @@ const Products = () => {
         }
     };
 
-    // Fetch products when filters change
+    // Fetch products when appliedFilters change
     useEffect(() => {
         fetchProducts();
-    }, [filters]);
+    }, [appliedFilters]);
 
-    // Handle filter change
-    const handleFilterChange = (key, value) => {
-        setFilters((prev) => ({
-            ...prev,
-            [key]: value,
-            page: 1, // Reset to first page when filters change
-        }));
+    // Handle draft filter change (doesn't trigger API call)
+    const handleDraftFilterChange = (key, value) => {
+        setDraftFilters((prev) => ({ ...prev, [key]: value }));
     };
 
-    // Handle search
+    // Handle sort change (applies immediately)
+    const handleSortChange = (value) => {
+        setAppliedFilters((prev) => ({ ...prev, sortBy: value, page: 1 }));
+    };
+
+    // Apply filters button - copies draft to applied
+    const handleApplyFilters = () => {
+        setAppliedFilters((prev) => ({
+            ...prev,
+            ...draftFilters,
+            page: 1, // Reset to first page
+        }));
+        logger.debug("Filters applied:", draftFilters);
+    };
+
+    // Handle search (button or Enter key)
     const handleSearch = (e) => {
         e.preventDefault();
-        setFilters((prev) => ({ ...prev, page: 1 }));
+        setAppliedFilters((prev) => ({
+            ...prev,
+            search: draftFilters.search,
+            page: 1,
+        }));
+        logger.debug("Search applied:", draftFilters.search);
     };
 
     // Clear all filters
     const clearFilters = () => {
-        setFilters({
+        const clearedFilters = {
             search: "",
             purity: "",
             isFeatured: "",
@@ -115,16 +142,21 @@ const Products = () => {
             minPrice: "",
             maxPrice: "",
             inStock: "",
+        };
+        setDraftFilters(clearedFilters);
+        setAppliedFilters({
+            ...clearedFilters,
             sortBy: "newest",
             page: 1,
             limit: 20,
         });
+        logger.debug("Filters cleared");
     };
 
     // Handle page change
     const handlePageChange = (newPage) => {
         if (newPage >= 1 && newPage <= pagination.totalPages) {
-            setFilters((prev) => ({ ...prev, page: newPage }));
+            setAppliedFilters((prev) => ({ ...prev, page: newPage }));
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
     };
@@ -170,9 +202,12 @@ const Products = () => {
                             <input
                                 type="text"
                                 placeholder="Search products by name, description..."
-                                value={filters.search}
+                                value={draftFilters.search}
                                 onChange={(e) =>
-                                    handleFilterChange("search", e.target.value)
+                                    handleDraftFilterChange(
+                                        "search",
+                                        e.target.value,
+                                    )
                                 }
                                 className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                             />
@@ -211,9 +246,12 @@ const Products = () => {
                                 Purity
                             </label>
                             <select
-                                value={filters.purity}
+                                value={draftFilters.purity}
                                 onChange={(e) =>
-                                    handleFilterChange("purity", e.target.value)
+                                    handleDraftFilterChange(
+                                        "purity",
+                                        e.target.value,
+                                    )
                                 }
                                 className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                             >
@@ -231,9 +269,12 @@ const Products = () => {
                                 Gender
                             </label>
                             <select
-                                value={filters.gender}
+                                value={draftFilters.gender}
                                 onChange={(e) =>
-                                    handleFilterChange("gender", e.target.value)
+                                    handleDraftFilterChange(
+                                        "gender",
+                                        e.target.value,
+                                    )
                                 }
                                 className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                             >
@@ -250,9 +291,9 @@ const Products = () => {
                                 Status
                             </label>
                             <select
-                                value={filters.isActive}
+                                value={draftFilters.isActive}
                                 onChange={(e) =>
-                                    handleFilterChange(
+                                    handleDraftFilterChange(
                                         "isActive",
                                         e.target.value,
                                     )
@@ -271,9 +312,9 @@ const Products = () => {
                                 Featured
                             </label>
                             <select
-                                value={filters.isFeatured}
+                                value={draftFilters.isFeatured}
                                 onChange={(e) =>
-                                    handleFilterChange(
+                                    handleDraftFilterChange(
                                         "isFeatured",
                                         e.target.value,
                                     )
@@ -294,9 +335,9 @@ const Products = () => {
                             <input
                                 type="number"
                                 placeholder="₹0"
-                                value={filters.minPrice}
+                                value={draftFilters.minPrice}
                                 onChange={(e) =>
-                                    handleFilterChange(
+                                    handleDraftFilterChange(
                                         "minPrice",
                                         e.target.value,
                                     )
@@ -313,9 +354,9 @@ const Products = () => {
                             <input
                                 type="number"
                                 placeholder="₹999999"
-                                value={filters.maxPrice}
+                                value={draftFilters.maxPrice}
                                 onChange={(e) =>
-                                    handleFilterChange(
+                                    handleDraftFilterChange(
                                         "maxPrice",
                                         e.target.value,
                                     )
@@ -330,9 +371,9 @@ const Products = () => {
                                 Stock
                             </label>
                             <select
-                                value={filters.inStock}
+                                value={draftFilters.inStock}
                                 onChange={(e) =>
-                                    handleFilterChange(
+                                    handleDraftFilterChange(
                                         "inStock",
                                         e.target.value,
                                     )
@@ -351,9 +392,9 @@ const Products = () => {
                                 Sort By
                             </label>
                             <select
-                                value={filters.sortBy}
+                                value={appliedFilters.sortBy}
                                 onChange={(e) =>
-                                    handleFilterChange("sortBy", e.target.value)
+                                    handleSortChange(e.target.value)
                                 }
                                 className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                             >
@@ -371,6 +412,18 @@ const Products = () => {
                                 <option value="featured">Featured First</option>
                             </select>
                         </div>
+                    </div>
+                )}
+
+                {/* Apply Filters Button */}
+                {showFilters && (
+                    <div className="pt-4 border-t border-border flex justify-end gap-2">
+                        <button
+                            onClick={handleApplyFilters}
+                            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+                        >
+                            Apply Filters
+                        </button>
                     </div>
                 )}
             </div>
@@ -503,54 +556,15 @@ const Products = () => {
                         </div>
 
                         {/* Pagination */}
-                        {pagination.totalPages > 1 && (
-                            <div className="px-6 py-4 border-t border-border flex items-center justify-between">
-                                <div className="text-sm text-text-secondary">
-                                    Showing{" "}
-                                    {(pagination.currentPage - 1) *
-                                        pagination.itemsPerPage +
-                                        1}{" "}
-                                    to{" "}
-                                    {Math.min(
-                                        pagination.currentPage *
-                                            pagination.itemsPerPage,
-                                        pagination.totalItems,
-                                    )}{" "}
-                                    of {pagination.totalItems} products
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() =>
-                                            handlePageChange(
-                                                pagination.currentPage - 1,
-                                            )
-                                        }
-                                        disabled={!pagination.hasPrevPage}
-                                        className="p-2 rounded-lg border border-border hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <MdKeyboardArrowLeft size={20} />
-                                    </button>
-
-                                    <span className="text-sm text-text">
-                                        Page {pagination.currentPage} of{" "}
-                                        {pagination.totalPages}
-                                    </span>
-
-                                    <button
-                                        onClick={() =>
-                                            handlePageChange(
-                                                pagination.currentPage + 1,
-                                            )
-                                        }
-                                        disabled={!pagination.hasNextPage}
-                                        className="p-2 rounded-lg border border-border hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <MdKeyboardArrowRight size={20} />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        <Pagination
+                            currentPage={pagination.currentPage}
+                            totalPages={pagination.totalPages}
+                            totalItems={pagination.totalItems}
+                            itemsPerPage={pagination.itemsPerPage}
+                            hasNextPage={pagination.hasNextPage}
+                            hasPrevPage={pagination.hasPrevPage}
+                            onPageChange={handlePageChange}
+                        />
                     </>
                 )}
             </div>

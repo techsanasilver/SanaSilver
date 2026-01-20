@@ -18,7 +18,7 @@
 
 10. Use Tab spacing/indentation of 4 spaces
 
-11. Make a Loader component in components/common and use that loader throughout the app wherever needed
+11. Make a Loader component in components/common and use that loader throughout the app wherever needed, if already present, use it.
 
 12. Use proper global error handler
 
