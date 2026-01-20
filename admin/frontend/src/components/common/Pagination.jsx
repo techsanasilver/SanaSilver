@@ -80,7 +80,8 @@ const Pagination = ({
         <div className="px-6 py-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Items Info */}
             <div className="text-sm text-text-secondary">
-                Showing {startItem} to {endItem} of {totalItems} items
+                {/* Showing {startItem} to {endItem} of {totalItems} items */}
+                Showing {currentPage} of {totalPages} pages
             </div>
 
             {/* Pagination Controls */}

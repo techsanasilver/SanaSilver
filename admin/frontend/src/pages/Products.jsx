@@ -84,7 +84,19 @@ const Products = () => {
 
             if (response.success) {
                 setProducts(response.data || []);
-                setPagination(response.pagination || pagination);
+                // Map API response to pagination state structure
+                if (response.meta.pagination) {
+                    setPagination({
+                        currentPage: response.meta.pagination.page,
+                        totalPages: response.meta.pagination.pages,
+                        totalItems: response.meta.pagination.total,
+                        itemsPerPage: response.meta.pagination.limit,
+                        hasNextPage:
+                            response.meta.pagination.page <
+                            response.meta.pagination.pages,
+                        hasPrevPage: response.meta.pagination.page > 1,
+                    });
+                }
             }
         } catch (err) {
             logger.error("Error fetching products:", err);
@@ -430,7 +442,7 @@ const Products = () => {
 
             {/* Error Message */}
             {error && (
-                <div className="bg-danger bg-opacity-10 border border-danger text-danger px-4 py-3 rounded-lg">
+                <div className="bg-danger/5 border border-danger text-danger px-4 py-3 rounded-lg">
                     {error}
                 </div>
             )}
