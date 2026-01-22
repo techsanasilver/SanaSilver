@@ -11,10 +11,10 @@ import {
     MdExpandMore,
     MdExpandLess,
 } from "react-icons/md";
-import { getProductById } from "../api/products.api";
-import { handleApiError } from "../utils/axios";
-import logger from "../utils/logger.util";
-import Loader from "../components/common/Loader";
+import { getProductById } from "../../api/products.api";
+import { handleApiError } from "../../utils/axios";
+import logger from "../../utils/logger.util";
+import Loader from "../../components/common/Loader";
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -559,135 +559,215 @@ const ProductDetail = () => {
                 </div>
             </div>
 
-            {/* Variants Table */}
+            {/* Variants Section */}
             <div className="bg-surface rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-text mb-4">
+                <h3 className="text-lg font-semibold text-text mb-6">
                     Product Variants ({product.variants?.length || 0})
                 </h3>
 
                 {product.variants && product.variants.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {product.variants.map((variant) => (
                             <div
                                 key={variant._id}
-                                className="border border-border rounded-lg overflow-hidden"
+                                className="bg-background border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
                             >
-                                {/* Collapsed Row */}
-                                <button
-                                    onClick={() => toggleVariant(variant._id)}
-                                    className="w-full bg-background hover:bg-border/30 transition-colors"
-                                >
-                                    <div className="grid grid-cols-6 gap-4 px-4 py-3 items-center">
-                                        <div className="col-span-2 flex items-center gap-2">
-                                            {expandedVariants[variant._id] ? (
-                                                <MdExpandLess
-                                                    size={20}
-                                                    className="text-text-secondary"
-                                                />
-                                            ) : (
-                                                <MdExpandMore
-                                                    size={20}
-                                                    className="text-text-secondary"
-                                                />
-                                            )}
-                                            <span className="text-sm font-medium text-text text-left">
-                                                {variant.variantName}
-                                            </span>
-                                        </div>
-                                        <div className="text-left">
-                                            <span className="text-sm text-text">
-                                                {variant.weight}g
-                                            </span>
-                                        </div>
-                                        <div className="text-left">
-                                            <span className="text-sm font-medium text-text">
+                                {/* Variant Image */}
+                                {variant.images && variant.images.length > 0 ? (
+                                    <div className="relative h-48 bg-gray-100">
+                                        <img
+                                            src={variant.images[0].url}
+                                            alt={
+                                                variant.images[0].alt ||
+                                                variant.variantName
+                                            }
+                                            className="w-full h-full object-cover"
+                                        />
+                                        {variant.images.length > 1 && (
+                                            <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                                                +{variant.images.length - 1}{" "}
+                                                more
+                                            </div>
+                                        )}
+                                        {variant.hasDiscount && (
+                                            <div className="absolute top-2 left-2 bg-success text-white text-xs font-semibold px-2 py-1 rounded">
+                                                {variant.discountPercent}% OFF
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="h-48 bg-gray-100 flex items-center justify-center text-text-secondary">
+                                        No Image
+                                    </div>
+                                )}
+
+                                {/* Variant Content */}
+                                <div className="p-4">
+                                    {/* Header */}
+                                    <div className="mb-3 pb-3 border-b border-border">
+                                        <h4 className="text-base font-semibold text-text mb-1">
+                                            {variant.variantName}
+                                        </h4>
+                                        <p className="text-xs text-text-secondary font-mono">
+                                            SKU: {variant.sku}
+                                        </p>
+                                    </div>
+
+                                    {/* Pricing */}
+                                    <div className="mb-3 pb-3 border-b border-border">
+                                        <div className="flex items-baseline gap-2 mb-1">
+                                            <span className="text-lg font-bold text-text">
                                                 {formatPrice(
                                                     variant.sellingPrice,
                                                 )}
                                             </span>
                                             {variant.hasDiscount && (
-                                                <span className="ml-2 text-xs text-success">
-                                                    {variant.discountPercent}%
-                                                    off
+                                                <span className="text-sm text-text-secondary line-through">
+                                                    {formatPrice(variant.mrp)}
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="text-left">
+                                        {variant.profitMargin !== undefined && (
+                                            <p className="text-xs text-success">
+                                                Profit: {variant.profitMargin}%
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Stock Status */}
+                                    <div className="mb-3 pb-3 border-b border-border">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-text-secondary">
+                                                Stock
+                                            </span>
                                             <span
-                                                className={`text-xs font-medium ${
-                                                    variant.stockQuantity > 0
+                                                className={`text-sm font-semibold ${
+                                                    variant.stockStatus ===
+                                                    "in_stock"
                                                         ? "text-success"
-                                                        : "text-danger"
+                                                        : variant.stockStatus ===
+                                                            "low_stock"
+                                                          ? "text-warning"
+                                                          : "text-danger"
                                                 }`}
                                             >
-                                                {variant.stockStatus ===
-                                                "in_stock"
-                                                    ? `${variant.stockQuantity} in stock`
-                                                    : variant.stockStatus ===
-                                                        "low_stock"
-                                                      ? `Low stock (${variant.stockQuantity})`
-                                                      : "Out of stock"}
+                                                {variant.stockQuantity} units
                                             </span>
                                         </div>
-                                        <div className="text-left">
-                                            {variant.isActive ? (
-                                                <MdCheckCircle
-                                                    className="text-success inline"
-                                                    size={20}
-                                                />
-                                            ) : (
-                                                <MdCancel
-                                                    className="text-danger inline"
-                                                    size={20}
-                                                />
-                                            )}
-                                        </div>
+                                        {variant.stockStatus ===
+                                            "low_stock" && (
+                                            <p className="text-xs text-warning mt-1">
+                                                Low stock alert at{" "}
+                                                {variant.lowStockThreshold}
+                                            </p>
+                                        )}
                                     </div>
-                                </button>
 
-                                {/* Expanded Content */}
-                                {expandedVariants[variant._id] && (
-                                    <div className="px-4 py-4 bg-surface border-t border-border">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {/* Basic Info */}
-                                            <div>
-                                                <h4 className="text-sm font-semibold text-text mb-3">
-                                                    Basic Information
-                                                </h4>
-                                                <div className="space-y-2 text-sm">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            SKU:
-                                                        </span>
-                                                        <span className="text-text font-mono text-xs">
-                                                            {variant.sku}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            Weight:
-                                                        </span>
-                                                        <span className="text-text">
-                                                            {variant.weight}g
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            Sort Order:
-                                                        </span>
-                                                        <span className="text-text">
-                                                            {variant.sortOrder}
-                                                        </span>
-                                                    </div>
+                                    {/* Attributes */}
+                                    {variant.attributes &&
+                                        variant.attributes.length > 0 && (
+                                            <div className="mb-3">
+                                                <h5 className="text-xs font-semibold text-text mb-2">
+                                                    Attributes
+                                                </h5>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {variant.attributes.map(
+                                                        (attr, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="text-xs bg-surface border border-border px-2 py-1 rounded"
+                                                            >
+                                                                {attr.key}:{" "}
+                                                                {attr.value}
+                                                            </span>
+                                                        ),
+                                                    )}
                                                 </div>
                                             </div>
+                                        )}
 
-                                            {/* Pricing */}
+                                    {/* Quick Info */}
+                                    <div className="flex items-center justify-between text-xs text-text-secondary mt-3">
+                                        <span>Weight: {variant.weight}g</span>
+                                        <span className="flex items-center gap-1">
+                                            {variant.isActive ? (
+                                                <>
+                                                    <MdCheckCircle
+                                                        className="text-success"
+                                                        size={14}
+                                                    />
+                                                    Active
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <MdCancel
+                                                        className="text-danger"
+                                                        size={14}
+                                                    />
+                                                    Inactive
+                                                </>
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    {/* Expand Button */}
+                                    <button
+                                        onClick={() =>
+                                            toggleVariant(variant._id)
+                                        }
+                                        className="w-full mt-3 py-2 bg-surface hover:bg-border/30 border border-border rounded text-sm font-medium text-text transition-colors flex items-center justify-center gap-1"
+                                    >
+                                        {expandedVariants[variant._id] ? (
+                                            <>
+                                                <MdExpandLess size={18} />
+                                                Show Less
+                                            </>
+                                        ) : (
+                                            <>
+                                                <MdExpandMore size={18} />
+                                                Show More
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* Expanded Details */}
+                                    {expandedVariants[variant._id] && (
+                                        <div className="mt-4 pt-4 border-t border-border space-y-3">
+                                            {/* All Images */}
+                                            {variant.images &&
+                                                variant.images.length > 1 && (
+                                                    <div>
+                                                        <h5 className="text-xs font-semibold text-text mb-2">
+                                                            All Images
+                                                        </h5>
+                                                        <div className="grid grid-cols-4 gap-2">
+                                                            {variant.images.map(
+                                                                (img, idx) => (
+                                                                    <img
+                                                                        key={
+                                                                            idx
+                                                                        }
+                                                                        src={
+                                                                            img.url
+                                                                        }
+                                                                        alt={
+                                                                            img.alt ||
+                                                                            `Image ${idx + 1}`
+                                                                        }
+                                                                        className="w-full h-16 object-cover rounded border border-border"
+                                                                    />
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                            {/* Detailed Pricing */}
                                             <div>
-                                                <h4 className="text-sm font-semibold text-text mb-3">
-                                                    Pricing
-                                                </h4>
-                                                <div className="space-y-2 text-sm">
+                                                <h5 className="text-xs font-semibold text-text mb-2">
+                                                    Pricing Details
+                                                </h5>
+                                                <div className="space-y-1 text-xs">
                                                     <div className="flex justify-between">
                                                         <span className="text-text-secondary">
                                                             MRP:
@@ -700,7 +780,7 @@ const ProductDetail = () => {
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span className="text-text-secondary">
-                                                            Selling Price:
+                                                            Selling:
                                                         </span>
                                                         <span className="text-text font-medium">
                                                             {formatPrice(
@@ -710,7 +790,7 @@ const ProductDetail = () => {
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span className="text-text-secondary">
-                                                            Cost Price:
+                                                            Cost:
                                                         </span>
                                                         <span className="text-text">
                                                             {formatPrice(
@@ -719,140 +799,27 @@ const ProductDetail = () => {
                                                         </span>
                                                     </div>
                                                     {variant.hasDiscount && (
-                                                        <>
-                                                            <div className="flex justify-between">
-                                                                <span className="text-text-secondary">
-                                                                    Discount:
-                                                                </span>
-                                                                <span className="text-success">
-                                                                    {
-                                                                        variant.discountPercent
-                                                                    }
-                                                                    % (
-                                                                    {formatPrice(
-                                                                        variant.discountAmount,
-                                                                    )}
-                                                                    )
-                                                                </span>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                    {variant.profitMargin !==
-                                                        undefined && (
                                                         <div className="flex justify-between">
                                                             <span className="text-text-secondary">
-                                                                Profit Margin:
+                                                                Discount:
                                                             </span>
-                                                            <span className="text-text">
-                                                                {
-                                                                    variant.profitMargin
-                                                                }
-                                                                %
+                                                            <span className="text-success">
+                                                                {formatPrice(
+                                                                    variant.discountAmount,
+                                                                )}
                                                             </span>
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
-
-                                            {/* Stock Info */}
-                                            <div>
-                                                <h4 className="text-sm font-semibold text-text mb-3">
-                                                    Stock Information
-                                                </h4>
-                                                <div className="space-y-2 text-sm">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            Quantity:
-                                                        </span>
-                                                        <span
-                                                            className={`font-medium ${
-                                                                variant.stockQuantity >
-                                                                0
-                                                                    ? "text-success"
-                                                                    : "text-danger"
-                                                            }`}
-                                                        >
-                                                            {
-                                                                variant.stockQuantity
-                                                            }
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            Low Stock Alert:
-                                                        </span>
-                                                        <span className="text-text">
-                                                            {
-                                                                variant.lowStockThreshold
-                                                            }
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            Status:
-                                                        </span>
-                                                        <span
-                                                            className={`font-medium capitalize ${
-                                                                variant.stockStatus ===
-                                                                "in_stock"
-                                                                    ? "text-success"
-                                                                    : variant.stockStatus ===
-                                                                        "low_stock"
-                                                                      ? "text-warning"
-                                                                      : "text-danger"
-                                                            }`}
-                                                        >
-                                                            {variant.stockStatus?.replace(
-                                                                "_",
-                                                                " ",
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Attributes */}
-                                            {variant.attributes &&
-                                                variant.attributes.length >
-                                                    0 && (
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-text mb-3">
-                                                            Attributes
-                                                        </h4>
-                                                        <div className="space-y-2 text-sm">
-                                                            {variant.attributes.map(
-                                                                (attr, idx) => (
-                                                                    <div
-                                                                        key={
-                                                                            idx
-                                                                        }
-                                                                        className="flex justify-between"
-                                                                    >
-                                                                        <span className="text-text-secondary">
-                                                                            {
-                                                                                attr.key
-                                                                            }
-                                                                            :
-                                                                        </span>
-                                                                        <span className="text-text">
-                                                                            {
-                                                                                attr.value
-                                                                            }
-                                                                        </span>
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
 
                                             {/* Dimensions */}
                                             {variant.dimensions && (
                                                 <div>
-                                                    <h4 className="text-sm font-semibold text-text mb-3">
+                                                    <h5 className="text-xs font-semibold text-text mb-2">
                                                         Dimensions
-                                                    </h4>
-                                                    <div className="space-y-2 text-sm">
+                                                    </h5>
+                                                    <div className="space-y-1 text-xs">
                                                         {variant.dimensions
                                                             .length && (
                                                             <div className="flex justify-between">
@@ -905,29 +872,17 @@ const ProductDetail = () => {
                                                 </div>
                                             )}
 
-                                            {/* Meta */}
+                                            {/* Timestamps */}
                                             <div>
-                                                <h4 className="text-sm font-semibold text-text mb-3">
-                                                    Additional Info
-                                                </h4>
-                                                <div className="space-y-2 text-sm">
-                                                    {variant.lastPriceUpdate && (
-                                                        <div className="flex justify-between">
-                                                            <span className="text-text-secondary">
-                                                                Price Updated:
-                                                            </span>
-                                                            <span className="text-text text-xs">
-                                                                {formatDate(
-                                                                    variant.lastPriceUpdate,
-                                                                )}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                <h5 className="text-xs font-semibold text-text mb-2">
+                                                    History
+                                                </h5>
+                                                <div className="space-y-1 text-xs">
                                                     <div className="flex justify-between">
                                                         <span className="text-text-secondary">
                                                             Created:
                                                         </span>
-                                                        <span className="text-text text-xs">
+                                                        <span className="text-text">
                                                             {formatDate(
                                                                 variant.createdAt,
                                                             )}
@@ -939,9 +894,21 @@ const ProductDetail = () => {
                                                             <span className="text-text-secondary">
                                                                 Updated:
                                                             </span>
-                                                            <span className="text-text text-xs">
+                                                            <span className="text-text">
                                                                 {formatDate(
                                                                     variant.updatedAt,
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {variant.lastPriceUpdate && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-text-secondary">
+                                                                Price Updated:
+                                                            </span>
+                                                            <span className="text-text">
+                                                                {formatDate(
+                                                                    variant.lastPriceUpdate,
                                                                 )}
                                                             </span>
                                                         </div>
@@ -949,8 +916,8 @@ const ProductDetail = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>

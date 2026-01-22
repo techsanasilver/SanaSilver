@@ -43,11 +43,11 @@ export const uploadSingleImage = async (buffer, folder, publicId = null) => {
                     if (error) {
                         logger.error("Cloudinary upload error:", error);
                         reject(
-                            new Error(`Image upload failed: ${error.message}`)
+                            new Error(`Image upload failed: ${error.message}`),
                         );
                     } else {
                         logger.info(
-                            `Image uploaded successfully: ${result.public_id}`
+                            `Image uploaded successfully: ${result.public_id}`,
                         );
                         resolve({
                             publicId: result.public_id,
@@ -59,7 +59,7 @@ export const uploadSingleImage = async (buffer, folder, publicId = null) => {
                             bytes: result.bytes,
                         });
                     }
-                }
+                },
             );
 
             // Convert buffer to stream and pipe to Cloudinary
@@ -79,13 +79,18 @@ export const uploadSingleImage = async (buffer, folder, publicId = null) => {
  * @returns {Promise<Array<Object>>} Array of upload results
  *
  * Example:
- * const results = await uploadMultipleImages([buffer1, buffer2], 'products', 'prod_123');
+ * const results = await uploadMultipleImages([buffer1, buffer2], 'products', 'prod_123', 0);
  * Returns: [
  *   { publicId: 'sana-silver/products/prod_123_img1', url: '...' },
  *   { publicId: 'sana-silver/products/prod_123_img2', url: '...' }
  * ]
  */
-export const uploadMultipleImages = async (buffers, folder, prefix = null) => {
+export const uploadMultipleImages = async (
+    buffers,
+    folder,
+    prefix = null,
+    startIndex = 0,
+) => {
     try {
         if (!Array.isArray(buffers) || buffers.length === 0) {
             throw new Error("No image buffers provided");
@@ -93,9 +98,10 @@ export const uploadMultipleImages = async (buffers, folder, prefix = null) => {
 
         // Upload all images in parallel
         const uploadPromises = buffers.map((buffer, index) => {
+            const imageNumber = startIndex + index + 1;
             const publicId = prefix
-                ? `${prefix}_img${index + 1}`
-                : `img_${Date.now()}_${index + 1}`;
+                ? `${prefix}_img${imageNumber}`
+                : `img_${Date.now().toString().slice(-6)}_${imageNumber}`;
 
             return uploadSingleImage(buffer, folder, publicId);
         });
@@ -103,7 +109,7 @@ export const uploadMultipleImages = async (buffers, folder, prefix = null) => {
         const results = await Promise.all(uploadPromises);
 
         logger.info(
-            `Successfully uploaded ${results.length} images to ${folder}`
+            `Successfully uploaded ${results.length} images to ${folder}`,
         );
 
         return results;
@@ -181,7 +187,7 @@ export const deleteMultipleImages = async (publicIds) => {
         await Promise.all(deletePromises);
 
         logger.info(
-            `Deleted ${results.success.length} images, ${results.failed.length} failed`
+            `Deleted ${results.success.length} images, ${results.failed.length} failed`,
         );
 
         return results;
@@ -344,7 +350,7 @@ export const deleteFolder = async (folderPath) => {
         // Delete all resources in folder
         const result = await cloudinary.api.delete_resources_by_prefix(
             folderPath,
-            { resource_type: "image" }
+            { resource_type: "image" },
         );
 
         logger.info(`Folder deleted: ${folderPath}`);

@@ -5,10 +5,10 @@ import PublicRoute from "./components/common/PublicRoute";
 import Layout from "./components/layout/Layout";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
-import Products from "./pages/Products";
-import ProductDetail from "./pages/ProductDetail";
-import AddProduct from "./pages/AddProduct";
-import EditProduct from "./pages/EditProduct";
+import Products from "./pages/products/Products";
+import ProductDetail from "./pages/products/ProductDetail";
+import AddProduct from "./pages/products/AddProduct";
+import EditProduct from "./pages/products/EditProduct";
 import Unauthorized from "./pages/Unauthorized";
 
 const App = () => {

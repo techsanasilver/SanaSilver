@@ -9,11 +9,11 @@ import {
     MdVisibility,
     MdClear,
 } from "react-icons/md";
-import { getAllProducts } from "../api/products.api";
-import { handleApiError } from "../utils/axios";
-import logger from "../utils/logger.util";
-import Loader from "../components/common/Loader";
-import Pagination from "../components/common/Pagination";
+import { getAllProducts } from "../../api/products.api";
+import { handleApiError } from "../../utils/axios";
+import logger from "../../utils/logger.util";
+import Loader from "../../components/common/Loader";
+import Pagination from "../../components/common/Pagination";
 
 const Products = () => {
     const navigate = useNavigate();

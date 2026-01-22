@@ -1,16 +1,23 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { MdArrowBack, MdSave, MdAdd, MdDelete, MdImage } from "react-icons/md";
-import { createProduct, uploadVariantImages } from "../api/products.api";
-import { getAllCategories } from "../api/categories.api";
-import { handleApiError } from "../utils/axios";
-import logger from "../utils/logger.util";
-import Loader from "../components/common/Loader";
+import {
+    getProductById,
+    updateProduct,
+    uploadVariantImages,
+    deleteVariantImages,
+} from "../../api/products.api";
+import { getAllCategories } from "../../api/categories.api";
+import { handleApiError } from "../../utils/axios";
+import logger from "../../utils/logger.util";
+import Loader from "../../components/common/Loader";
 
-const AddProduct = () => {
+const EditProduct = () => {
+    const { id } = useParams();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
+    const [fetchingProduct, setFetchingProduct] = useState(true);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
 
@@ -46,32 +53,19 @@ const AddProduct = () => {
         metaKeywords: [],
     });
 
-    // Images
-    const [images, setImages] = useState([]);
-    const [imagePreviews, setImagePreviews] = useState([]);
+    // Existing images from server
+    const [existingImages, setExistingImages] = useState([]);
+    const [imagesToDelete, setImagesToDelete] = useState([]);
+
+    // New images to upload
+    const [newImages, setNewImages] = useState([]);
+    const [newImagePreviews, setNewImagePreviews] = useState([]);
 
     // Variants
-    const [variants, setVariants] = useState([
-        {
-            variantName: "",
-            weight: "",
-            sellingPrice: "",
-            mrp: "",
-            costPrice: "",
-            stockQuantity: "0",
-            lowStockThreshold: "5",
-            attributes: [],
-            dimensions: {
-                length: "",
-                width: "",
-                height: "",
-            },
-            images: [],
-            imagePreviews: [],
-        },
-    ]);
+    const [variants, setVariants] = useState([]);
+    const [variantsToDelete, setVariantsToDelete] = useState([]);
 
-    // Tag input
+    // Tag/keyword input
     const [tagInput, setTagInput] = useState("");
     const [keywordInput, setKeywordInput] = useState("");
 
@@ -107,12 +101,96 @@ const AddProduct = () => {
             } else {
                 setSubcategories([]);
             }
-            // Reset subcategory when category changes
-            setFormData((prev) => ({ ...prev, subcategory: "" }));
         } else {
             setSubcategories([]);
         }
     }, [formData.category, categories]);
+
+    // Fetch existing product data
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                setFetchingProduct(true);
+                setError(null);
+
+                logger.debug("Fetching product for edit:", id);
+
+                const response = await getProductById(id);
+
+                if (response.success) {
+                    const product = response.data;
+
+                    // Populate form data
+                    setFormData({
+                        name: product.name || "",
+                        description: product.description || "",
+                        shortDescription: product.shortDescription || "",
+                        category: product.category?._id || "",
+                        subcategory: product.subcategory?._id || "",
+                        purity: product.purity || "925",
+                        makingChargesPerGram:
+                            product.makingChargesPerGram || "",
+                        gstRate: product.gstRate || "3",
+                        isFeatured: product.isFeatured || false,
+                        tags: product.tags || [],
+                        gender: product.attributes?.gender || "",
+                        occasion: product.attributes?.occasion || "",
+                        gemstone: product.attributes?.gemstone || "",
+                        plating: product.attributes?.plating || "",
+                        isHallmarked: product.hallmark?.isHallmarked || false,
+                        bisLicenseNumber:
+                            product.hallmark?.bisLicenseNumber || "",
+                        hallmarkingCenter:
+                            product.hallmark?.hallmarkingCenter || "",
+                        purityCertified:
+                            product.hallmark?.purityCertified || "925",
+                        metaTitle: product.seo?.metaTitle || "",
+                        metaDescription: product.seo?.metaDescription || "",
+                        metaKeywords: product.seo?.metaKeywords || [],
+                    });
+
+                    // Set existing images
+                    setExistingImages(product.images || []);
+
+                    // Set variants
+                    if (product.variants && product.variants.length > 0) {
+                        setVariants(
+                            product.variants.map((v) => ({
+                                _id: v._id,
+                                variantName: v.variantName || "",
+                                weight: v.weight || "",
+                                sellingPrice: v.sellingPrice || "",
+                                mrp: v.mrp || "",
+                                costPrice: v.costPrice || "",
+                                stockQuantity: v.stockQuantity || "0",
+                                lowStockThreshold: v.lowStockThreshold || "5",
+                                attributes: v.attributes || [],
+                                dimensions: {
+                                    length: v.dimensions?.length || "",
+                                    width: v.dimensions?.width || "",
+                                    height: v.dimensions?.height || "",
+                                },
+                                existingImages: v.images || [],
+                                imagesToDelete: [],
+                                newImages: [],
+                                newImagePreviews: [],
+                            })),
+                        );
+                    }
+
+                    logger.debug("Product data loaded for edit:", product);
+                }
+            } catch (err) {
+                logger.error("Error fetching product for edit:", err);
+                const errorMessage = handleApiError(err);
+                setError(errorMessage);
+            } finally {
+                setFetchingProduct(false);
+            }
+        };
+
+        fetchProduct();
+    }, [id]);
 
     // Handle form input change
     const handleInputChange = (e) => {
@@ -123,22 +201,32 @@ const AddProduct = () => {
         }));
     };
 
-    // Handle image upload
-    const handleImageChange = (e) => {
+    // Remove existing image
+    const removeExistingImage = (publicId) => {
+        setImagesToDelete((prev) => [...prev, publicId]);
+        setExistingImages((prev) =>
+            prev.filter((img) => img.publicId !== publicId),
+        );
+    };
+
+    // Handle new image upload
+    const handleNewImageChange = (e) => {
         const files = Array.from(e.target.files);
 
-        if (images.length + files.length > 5) {
+        const totalImages =
+            existingImages.length + newImages.length + files.length;
+        if (totalImages > 5) {
             setError("Maximum 5 images allowed for product");
             return;
         }
 
-        setImages((prev) => [...prev, ...files]);
+        setNewImages((prev) => [...prev, ...files]);
 
         // Create previews
         files.forEach((file) => {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setImagePreviews((prev) => [...prev, reader.result]);
+                setNewImagePreviews((prev) => [...prev, reader.result]);
             };
             reader.readAsDataURL(file);
         });
@@ -146,10 +234,10 @@ const AddProduct = () => {
         setError(null);
     };
 
-    // Remove image
-    const removeImage = (index) => {
-        setImages((prev) => prev.filter((_, i) => i !== index));
-        setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    // Remove new image
+    const removeNewImage = (index) => {
+        setNewImages((prev) => prev.filter((_, i) => i !== index));
+        setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
     };
 
     // Add tag
@@ -223,6 +311,9 @@ const AddProduct = () => {
     const addVariantAttribute = (variantIndex) => {
         setVariants((prev) => {
             const updated = [...prev];
+            if (!updated[variantIndex].attributes) {
+                updated[variantIndex].attributes = [];
+            }
             updated[variantIndex].attributes.push({ key: "", value: "" });
             return updated;
         });
@@ -253,57 +344,78 @@ const AddProduct = () => {
         });
     };
 
-    // Handle variant image upload
+    // Remove existing variant image
+    const removeExistingVariantImage = (variantIndex, publicId) => {
+        setVariants((prev) => {
+            const updated = [...prev];
+            updated[variantIndex].imagesToDelete = [
+                ...updated[variantIndex].imagesToDelete,
+                publicId,
+            ];
+            updated[variantIndex].existingImages = updated[
+                variantIndex
+            ].existingImages.filter((img) => img.publicId !== publicId);
+            return updated;
+        });
+    };
+
+    // Handle new variant image upload
     const handleVariantImageChange = (variantIndex, e) => {
         const files = Array.from(e.target.files);
         const variant = variants[variantIndex];
 
-        if (variant.images.length + files.length > 5) {
+        const totalImages =
+            variant.existingImages.length +
+            variant.newImages.length +
+            files.length;
+        if (totalImages > 5) {
             setError(`Maximum 5 images allowed per variant`);
             return;
         }
 
-        const newImages = [...variant.images, ...files];
-        const newPreviews = [...variant.imagePreviews];
+        setVariants((prev) => {
+            const updated = [...prev];
+            updated[variantIndex].newImages = [
+                ...updated[variantIndex].newImages,
+                ...files,
+            ];
+            return updated;
+        });
 
+        // Create previews
         files.forEach((file) => {
             const reader = new FileReader();
             reader.onloadend = () => {
-                newPreviews.push(reader.result);
-                // Update state after all previews are loaded
                 setVariants((prev) => {
                     const updated = [...prev];
-                    updated[variantIndex].imagePreviews = newPreviews;
+                    updated[variantIndex].newImagePreviews = [
+                        ...updated[variantIndex].newImagePreviews,
+                        reader.result,
+                    ];
                     return updated;
                 });
             };
             reader.readAsDataURL(file);
         });
 
-        setVariants((prev) => {
-            const updated = [...prev];
-            updated[variantIndex].images = newImages;
-            return updated;
-        });
-
         setError(null);
     };
 
-    // Remove variant image
-    const removeVariantImage = (variantIndex, imageIndex) => {
+    // Remove new variant image
+    const removeNewVariantImage = (variantIndex, imageIndex) => {
         setVariants((prev) => {
             const updated = [...prev];
-            updated[variantIndex].images = updated[variantIndex].images.filter(
-                (_, i) => i !== imageIndex,
-            );
-            updated[variantIndex].imagePreviews = updated[
+            updated[variantIndex].newImages = updated[
                 variantIndex
-            ].imagePreviews.filter((_, i) => i !== imageIndex);
+            ].newImages.filter((_, i) => i !== imageIndex);
+            updated[variantIndex].newImagePreviews = updated[
+                variantIndex
+            ].newImagePreviews.filter((_, i) => i !== imageIndex);
             return updated;
         });
     };
 
-    // Add variant
+    // Add new variant
     const addVariant = () => {
         setVariants((prev) => [
             ...prev,
@@ -321,17 +433,24 @@ const AddProduct = () => {
                     width: "",
                     height: "",
                 },
-                images: [],
-                imagePreviews: [],
+                existingImages: [],
+                imagesToDelete: [],
+                newImages: [],
+                newImagePreviews: [],
             },
         ]);
     };
 
     // Remove variant
     const removeVariant = (index) => {
-        if (variants.length > 1) {
-            setVariants((prev) => prev.filter((_, i) => i !== index));
+        const variant = variants[index];
+
+        // If variant has _id, it's an existing variant - add to delete list
+        if (variant._id) {
+            setVariantsToDelete((prev) => [...prev, variant._id]);
         }
+
+        setVariants((prev) => prev.filter((_, i) => i !== index));
     };
 
     // Handle form submit
@@ -343,7 +462,8 @@ const AddProduct = () => {
             setError(null);
 
             // Validate
-            if (images.length === 0) {
+            const totalImages = existingImages.length + newImages.length;
+            if (totalImages === 0) {
                 setError("At least one product image is required");
                 setLoading(false);
                 return;
@@ -413,8 +533,13 @@ const AddProduct = () => {
                 data.append("seo", JSON.stringify(seo));
             }
 
-            // Add images
-            images.forEach((image) => {
+            // Add images to delete
+            if (imagesToDelete.length > 0) {
+                data.append("deleteImages", JSON.stringify(imagesToDelete));
+            }
+
+            // Add new images
+            newImages.forEach((image) => {
                 data.append("images", image);
             });
 
@@ -427,6 +552,9 @@ const AddProduct = () => {
                     stockQuantity: parseInt(v.stockQuantity) || 0,
                     lowStockThreshold: parseInt(v.lowStockThreshold) || 5,
                 };
+
+                // Include _id if updating existing variant
+                if (v._id) variant._id = v._id;
 
                 if (v.mrp) variant.mrp = parseFloat(v.mrp);
                 if (v.costPrice) variant.costPrice = parseFloat(v.costPrice);
@@ -468,43 +596,76 @@ const AddProduct = () => {
             // Add variants as JSON string
             data.append("variants", JSON.stringify(cleanedVariants));
 
+            // Add variants to delete
+            if (variantsToDelete.length > 0) {
+                data.append("deleteVariants", JSON.stringify(variantsToDelete));
+            }
+
             logger.debug(
-                "Submitting product creation:",
+                "Submitting product update:",
                 Object.fromEntries(data),
             );
 
-            const response = await createProduct(data);
+            const response = await updateProduct(id, data);
 
             if (response.success) {
                 const product = response.data;
-                logger.info("Product created successfully:", product);
+                logger.info("Product updated successfully:", product);
 
-                // Upload variant images if any
+                // Handle variant images (upload/delete)
                 if (product.variants && product.variants.length > 0) {
                     for (let i = 0; i < product.variants.length; i++) {
                         const variant = product.variants[i];
-                        const variantImages = variants[i].images;
+                        const variantData = variants.find(
+                            (v) => v._id === variant._id,
+                        );
 
-                        if (variantImages && variantImages.length > 0) {
-                            try {
-                                const variantImageData = new FormData();
-                                variantImages.forEach((img) => {
-                                    variantImageData.append("images", img);
-                                });
+                        if (variantData) {
+                            // Delete variant images if any
+                            if (
+                                variantData.imagesToDelete &&
+                                variantData.imagesToDelete.length > 0
+                            ) {
+                                try {
+                                    await deleteVariantImages(
+                                        variant._id,
+                                        variantData.imagesToDelete,
+                                    );
+                                    logger.debug(
+                                        `Deleted ${variantData.imagesToDelete.length} images from variant ${variant._id}`,
+                                    );
+                                } catch (imgErr) {
+                                    logger.error(
+                                        `Error deleting variant images:`,
+                                        imgErr,
+                                    );
+                                }
+                            }
 
-                                await uploadVariantImages(
-                                    variant._id,
-                                    variantImageData,
-                                );
-                                logger.debug(
-                                    `Uploaded ${variantImages.length} images for variant ${variant._id}`,
-                                );
-                            } catch (imgErr) {
-                                logger.error(
-                                    `Error uploading variant images for ${variant._id}:`,
-                                    imgErr,
-                                );
-                                // Continue with other variants even if one fails
+                            // Upload new variant images if any
+                            if (
+                                variantData.newImages &&
+                                variantData.newImages.length > 0
+                            ) {
+                                try {
+                                    const variantImageData = new FormData();
+                                    variantData.newImages.forEach((img) => {
+                                        variantImageData.append("images", img);
+                                    });
+
+                                    await uploadVariantImages(
+                                        variant._id,
+                                        variantImageData,
+                                    );
+                                    logger.debug(
+                                        `Uploaded ${variantData.newImages.length} images for variant ${variant._id}`,
+                                    );
+                                } catch (imgErr) {
+                                    logger.error(
+                                        `Error uploading variant images:`,
+                                        imgErr,
+                                    );
+                                }
                             }
                         }
                     }
@@ -514,17 +675,25 @@ const AddProduct = () => {
 
                 // Redirect to product detail page
                 setTimeout(() => {
-                    navigate(`/products/${product._id}`);
+                    navigate(`/products/${id}`);
                 }, 1500);
             }
         } catch (err) {
-            logger.error("Error creating product:", err);
+            logger.error("Error updating product:", err);
             const errorMessage = handleApiError(err);
             setError(errorMessage);
         } finally {
             setLoading(false);
         }
     };
+
+    if (fetchingProduct) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <Loader />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -537,22 +706,20 @@ const AddProduct = () => {
                     <MdArrowBack size={20} />
                     Back
                 </button>
-                <h1 className="text-3xl font-bold text-text">
-                    Add New Product
-                </h1>
+                <h1 className="text-3xl font-bold text-text">Edit Product</h1>
                 <div className="w-20"></div> {/* Spacer for centering */}
             </div>
 
             {/* Success Message */}
             {success && (
-                <div className="bg-success bg-opacity-10 border border-success text-success px-4 py-3 rounded-lg">
-                    Product created successfully! Redirecting...
+                <div className="bg-success/10 bg-opacity-10 border border-success text-success px-4 py-3 rounded-lg">
+                    Product updated successfully! Redirecting...
                 </div>
             )}
 
             {/* Error Message */}
             {error && (
-                <div className="bg-danger bg-opacity-10 border border-danger text-danger px-4 py-3 rounded-lg">
+                <div className="bg-danger/10 bg-opacity-10 border border-danger text-danger px-4 py-3 rounded-lg">
                     {error}
                 </div>
             )}
@@ -744,46 +911,96 @@ const AddProduct = () => {
                     </h2>
 
                     <div className="space-y-4">
+                        {/* Existing Images */}
+                        {existingImages.length > 0 && (
+                            <div>
+                                <label className="block text-sm font-medium text-text mb-2">
+                                    Existing Images ({existingImages.length})
+                                </label>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                    {existingImages.map((image, index) => (
+                                        <div
+                                            key={image.publicId}
+                                            className="relative group"
+                                        >
+                                            <img
+                                                src={image.url}
+                                                alt={`Product ${index + 1}`}
+                                                className="w-full aspect-square object-cover rounded-lg border border-border"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    removeExistingImage(
+                                                        image.publicId,
+                                                    )
+                                                }
+                                                className="absolute top-2 right-2 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <MdDelete size={16} />
+                                            </button>
+                                            {image.isPrimary && (
+                                                <span className="absolute bottom-2 left-2 bg-primary text-white text-xs px-2 py-1 rounded">
+                                                    Primary
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Upload New Images */}
                         <div>
                             <label className="block text-sm font-medium text-text mb-2">
-                                Upload Product Images (1-5 images required)
+                                Add New Images
                             </label>
                             <input
                                 type="file"
                                 accept="image/*"
                                 multiple
-                                onChange={handleImageChange}
+                                onChange={handleNewImageChange}
                                 className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                             />
                             <p className="text-xs text-text-secondary mt-1">
-                                {images.length}/5 images uploaded
+                                Total:{" "}
+                                {existingImages.length + newImages.length}/5
+                                images
                             </p>
                         </div>
 
-                        {/* Image Previews */}
-                        {imagePreviews.length > 0 && (
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                {imagePreviews.map((preview, index) => (
-                                    <div key={index} className="relative group">
-                                        <img
-                                            src={preview}
-                                            alt={`Preview ${index + 1}`}
-                                            className="w-full h-32 object-cover rounded-lg border border-border"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => removeImage(index)}
-                                            className="absolute top-2 right-2 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        {/* New Image Previews */}
+                        {newImagePreviews.length > 0 && (
+                            <div>
+                                <label className="block text-sm font-medium text-text mb-2">
+                                    New Images to Upload ({newImages.length})
+                                </label>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                    {newImagePreviews.map((preview, index) => (
+                                        <div
+                                            key={index}
+                                            className="relative group"
                                         >
-                                            <MdDelete size={16} />
-                                        </button>
-                                        {index === 0 && (
-                                            <span className="absolute bottom-2 left-2 bg-primary text-white text-xs px-2 py-1 rounded">
-                                                Primary
+                                            <img
+                                                src={preview}
+                                                alt={`New ${index + 1}`}
+                                                className="w-full aspect-square object-cover rounded-lg border  border-border"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    removeNewImage(index)
+                                                }
+                                                className="absolute top-2 right-2 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <MdDelete size={16} />
+                                            </button>
+                                            <span className="absolute bottom-2 left-2 bg-info text-white text-xs px-2 py-1 rounded">
+                                                New
                                             </span>
-                                        )}
-                                    </div>
-                                ))}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1006,16 +1223,19 @@ const AddProduct = () => {
                             <div className="flex items-center justify-between">
                                 <h3 className="font-semibold text-text">
                                     Variant {vIndex + 1}
+                                    {variant._id && (
+                                        <span className="ml-2 text-xs text-info">
+                                            (Existing)
+                                        </span>
+                                    )}
                                 </h3>
-                                {variants.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => removeVariant(vIndex)}
-                                        className="text-danger hover:text-opacity-80 transition-colors"
-                                    >
-                                        <MdDelete size={20} />
-                                    </button>
-                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => removeVariant(vIndex)}
+                                    className="text-danger hover:text-opacity-80 transition-colors"
+                                >
+                                    <MdDelete size={20} />
+                                </button>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1250,7 +1470,8 @@ const AddProduct = () => {
                                     </button>
                                 </div>
 
-                                {variant.attributes.length > 0 ? (
+                                {variant.attributes &&
+                                variant.attributes.length > 0 ? (
                                     <div className="space-y-2">
                                         {variant.attributes.map(
                                             (attr, aIndex) => (
@@ -1310,54 +1531,111 @@ const AddProduct = () => {
                             </div>
 
                             {/* Variant Images */}
-                            <div className="pt-4 border-t border-border">
-                                <label className="block text-sm font-medium text-text mb-2">
+                            <div className="pt-4 border-t border-border space-y-3">
+                                <label className="block text-sm font-medium text-text">
                                     Variant Images (Optional, max 5)
                                 </label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={(e) =>
-                                        handleVariantImageChange(vIndex, e)
-                                    }
-                                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                                <p className="text-xs text-text-secondary mt-1">
-                                    {variant.images.length}/5 images
-                                </p>
 
-                                {/* Variant Image Previews */}
-                                {variant.imagePreviews.length > 0 && (
-                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-3">
-                                        {variant.imagePreviews.map(
-                                            (preview, imgIndex) => (
-                                                <div
-                                                    key={imgIndex}
-                                                    className="relative group"
-                                                >
-                                                    <img
-                                                        src={preview}
-                                                        alt={`Variant ${vIndex + 1} Image ${imgIndex + 1}`}
-                                                        className="w-full h-24 object-cover rounded-lg border border-border"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            removeVariantImage(
-                                                                vIndex,
-                                                                imgIndex,
-                                                            )
-                                                        }
-                                                        className="absolute top-1 right-1 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <MdDelete size={14} />
-                                                    </button>
-                                                </div>
-                                            ),
-                                        )}
-                                    </div>
-                                )}
+                                {/* Existing Variant Images */}
+                                {variant.existingImages &&
+                                    variant.existingImages.length > 0 && (
+                                        <div>
+                                            <p className="text-xs text-text-secondary mb-2">
+                                                Existing Images (
+                                                {variant.existingImages.length})
+                                            </p>
+                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                                {variant.existingImages.map(
+                                                    (img, imgIndex) => (
+                                                        <div
+                                                            key={img.publicId}
+                                                            className="relative group"
+                                                        >
+                                                            <img
+                                                                src={img.url}
+                                                                alt={`Variant ${vIndex + 1} Image ${imgIndex + 1}`}
+                                                                className="w-full aspect-square object-cover rounded-lg border border-border"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    removeExistingVariantImage(
+                                                                        vIndex,
+                                                                        img.publicId,
+                                                                    )
+                                                                }
+                                                                className="absolute top-1 right-1 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <MdDelete
+                                                                    size={14}
+                                                                />
+                                                            </button>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                {/* Upload New Variant Images */}
+                                <div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={(e) =>
+                                            handleVariantImageChange(vIndex, e)
+                                        }
+                                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                                    />
+                                    <p className="text-xs text-text-secondary mt-1">
+                                        Total:{" "}
+                                        {(variant.existingImages?.length || 0) +
+                                            (variant.newImages?.length || 0)}
+                                        /5 images
+                                    </p>
+                                </div>
+
+                                {/* New Variant Image Previews */}
+                                {variant.newImagePreviews &&
+                                    variant.newImagePreviews.length > 0 && (
+                                        <div>
+                                            <p className="text-xs text-text-secondary mb-2">
+                                                New Images to Upload (
+                                                {variant.newImages.length})
+                                            </p>
+                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                                {variant.newImagePreviews.map(
+                                                    (preview, imgIndex) => (
+                                                        <div
+                                                            key={imgIndex}
+                                                            className="relative group"
+                                                        >
+                                                            <img
+                                                                src={preview}
+                                                                alt={`New Variant ${vIndex + 1} Image ${imgIndex + 1}`}
+                                                                className="w-full aspect-square object-cover rounded-lg border border-border"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    removeNewVariantImage(
+                                                                        vIndex,
+                                                                        imgIndex,
+                                                                    )
+                                                                }
+                                                                className="absolute top-1 right-1 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <MdDelete
+                                                                    size={14}
+                                                                />
+                                                            </button>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                             </div>
                         </div>
                     ))}
@@ -1473,12 +1751,12 @@ const AddProduct = () => {
                         {loading ? (
                             <>
                                 <Loader size="sm" variant="white" />
-                                Creating...
+                                Updating...
                             </>
                         ) : (
                             <>
                                 <MdSave size={20} />
-                                Create Product
+                                Update Product
                             </>
                         )}
                     </button>
@@ -1488,4 +1766,4 @@ const AddProduct = () => {
     );
 };
 
-export default AddProduct;
+export default EditProduct;

@@ -60,10 +60,13 @@ export const createProduct = async (
             if (imageFiles && imageFiles.length > 0) {
                 const slugBase = productData.slug;
                 const imageBuffers = imageFiles.map((file) => file.buffer);
+                // Add short timestamp to ensure unique publicIds
+                const shortTimestamp = Date.now().toString().slice(-6);
                 uploadedImages = await uploadMultipleImages(
                     imageBuffers,
                     "products",
-                    `prod_${slugBase}`,
+                    `prod_${slugBase}_${shortTimestamp}`,
+                    0, // Start from img1
                 );
 
                 // Format images for database
@@ -435,21 +438,53 @@ export const updateProduct = async (
             productUpdates.slug = await generateSlug(productUpdates.name);
         }
 
-        // Handle new image uploads FIRST (before deletion to ensure we always have images)
+        // Handle image deletions FIRST (before upload to calculate correct sortOrder)
+        if (deleteImagePublicIds && deleteImagePublicIds.length > 0) {
+            // Calculate remaining images after deletion
+            const remainingImages = product.images.filter(
+                (img) => !deleteImagePublicIds.includes(img.publicId),
+            );
+
+            // If deleting all images, ensure new images are being uploaded
+            if (
+                remainingImages.length === 0 &&
+                (!imageFiles || imageFiles.length === 0)
+            ) {
+                throw new Error(
+                    "Cannot delete all images without uploading new ones. Product must have at least one image.",
+                );
+            }
+
+            // Delete from Cloudinary
+            await deleteMultipleImages(deleteImagePublicIds);
+
+            // Remove from product and re-adjust sortOrder
+            product.images = remainingImages.map((img, index) => ({
+                ...img,
+                sortOrder: index,
+                isPrimary: index === 0,
+            }));
+        }
+
+        // Handle new image uploads AFTER deletion (so we have correct sortOrder base)
         if (imageFiles && imageFiles.length > 0) {
             const slugBase =
                 productUpdates.slug ||
                 product.slug ||
                 product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
             const imageBuffers = imageFiles.map((file) => file.buffer);
-            // Add timestamp to ensure unique publicIds even when re-uploading
+            // Add short timestamp to ensure unique publicIds even when re-uploading
+            const shortTimestamp = Date.now().toString().slice(-6);
+            // Start numbering from the next available index after existing images
+            const startIndex = product.images?.length || 0;
             const uploadedImages = await uploadMultipleImages(
                 imageBuffers,
                 "products",
-                `prod_${slugBase}_${Date.now()}`,
+                `prod_${slugBase}_${shortTimestamp}`,
+                startIndex, // Continue numbering from where existing images left off
             );
 
-            // Format and add new images
+            // Format and add new images with correct sortOrder
             const newImages = uploadedImages.map((img, index) => ({
                 publicId: img.publicId,
                 url: img.secureUrl,
@@ -461,28 +496,7 @@ export const updateProduct = async (
             product.images = [...(product.images || []), ...newImages];
         }
 
-        // Handle image deletions AFTER upload (so we always have images)
-        if (deleteImagePublicIds && deleteImagePublicIds.length > 0) {
-            // Calculate remaining images after deletion
-            const remainingImages = product.images.filter(
-                (img) => !deleteImagePublicIds.includes(img.publicId),
-            );
-
-            // Ensure we're not deleting all images
-            if (remainingImages.length === 0) {
-                throw new Error(
-                    "Cannot delete all images without uploading new ones. Product must have at least one image.",
-                );
-            }
-
-            // Delete from Cloudinary
-            await deleteMultipleImages(deleteImagePublicIds);
-
-            // Remove from product
-            product.images = remainingImages;
-        }
-
-        // Re-adjust sortOrder and ensure one image is primary
+        // Final sortOrder adjustment to ensure sequential ordering
         if (product.images && product.images.length > 0) {
             product.images = product.images.map((img, index) => ({
                 ...img,
@@ -853,10 +867,12 @@ export const createVariant = async (
             const slugBase = variantData.sku;
             const imageBuffers = imageFiles.map((file) => file.buffer);
             try {
+                const shortTimestamp = Date.now().toString().slice(-6);
                 const uploadedImages = await uploadMultipleImages(
                     imageBuffers,
                     "products/variants",
-                    slugBase,
+                    `${slugBase}_${shortTimestamp}`,
+                    0, // Start from img1 for new variant
                 );
 
                 // Track uploaded publicIds for cleanup on failure
@@ -962,10 +978,13 @@ export const updateVariant = async (
     if (imageFiles && imageFiles.length > 0) {
         const slugBase = variant.sku || `var_${variant._id}`;
         const imageBuffers = imageFiles.map((file) => file.buffer);
+        const shortTimestamp = Date.now().toString().slice(-6);
+        const startIndex = variant.images?.length || 0;
         const uploadedImages = await uploadMultipleImages(
             imageBuffers,
             "products/variants",
-            slugBase,
+            `${slugBase}_${shortTimestamp}`,
+            startIndex, // Continue numbering from existing images
         );
 
         // Format and add new images
@@ -1183,10 +1202,13 @@ export const uploadProductImages = async (productId, imageFiles, adminId) => {
     const slugBase =
         product.slug || product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const imageBuffers = imageFiles.map((file) => file.buffer);
+    const shortTimestamp = Date.now().toString().slice(-6);
+    const startIndex = product.images?.length || 0;
     const uploadedImages = await uploadMultipleImages(
         imageBuffers,
         "products",
-        `prod_${slugBase}`,
+        `prod_${slugBase}_${shortTimestamp}`,
+        startIndex, // Continue numbering from existing images
     );
 
     // Format and add new images to existing images array
@@ -1294,10 +1316,13 @@ export const uploadVariantImages = async (variantId, imageFiles, adminId) => {
     // Upload new images to Cloudinary
     const slugBase = variant.sku || `var_${variant._id}`;
     const imageBuffers = imageFiles.map((file) => file.buffer);
+    const shortTimestamp = Date.now().toString().slice(-6);
+    const startIndex = variant.images?.length || 0;
     const uploadedImages = await uploadMultipleImages(
         imageBuffers,
         "products/variants",
-        slugBase,
+        `${slugBase}_${shortTimestamp}`,
+        startIndex, // Continue numbering from existing images
     );
 
     // Format and add new images
