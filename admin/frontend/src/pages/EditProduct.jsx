@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MdArrowBack, MdSave, MdAdd, MdDelete, MdImage } from "react-icons/md";
-import { getProductById, updateProduct } from "../api/products.api";
+import {
+    getProductById,
+    updateProduct,
+    uploadVariantImages,
+    deleteVariantImages,
+} from "../api/products.api";
+import { getAllCategories } from "../api/categories.api";
 import { handleApiError } from "../utils/axios";
 import logger from "../utils/logger.util";
 import Loader from "../components/common/Loader";
@@ -14,6 +20,11 @@ const EditProduct = () => {
     const [fetchingProduct, setFetchingProduct] = useState(true);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+
+    // Categories and subcategories
+    const [categories, setCategories] = useState([]);
+    const [subcategories, setSubcategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
 
     // Product form data
     const [formData, setFormData] = useState({
@@ -57,6 +68,43 @@ const EditProduct = () => {
     // Tag/keyword input
     const [tagInput, setTagInput] = useState("");
     const [keywordInput, setKeywordInput] = useState("");
+
+    // Fetch categories on mount
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                setLoadingCategories(true);
+                const response = await getAllCategories();
+                if (response.success) {
+                    setCategories(response.data);
+                    logger.debug("Categories loaded:", response.data);
+                }
+            } catch (err) {
+                logger.error("Error fetching categories:", err);
+                setError("Failed to load categories");
+            } finally {
+                setLoadingCategories(false);
+            }
+        };
+
+        fetchCategories();
+    }, []);
+
+    // Update subcategories when category changes
+    useEffect(() => {
+        if (formData.category) {
+            const selectedCategory = categories.find(
+                (cat) => cat._id === formData.category,
+            );
+            if (selectedCategory && selectedCategory.subcategories) {
+                setSubcategories(selectedCategory.subcategories);
+            } else {
+                setSubcategories([]);
+            }
+        } else {
+            setSubcategories([]);
+        }
+    }, [formData.category, categories]);
 
     // Fetch existing product data
     useEffect(() => {
@@ -122,6 +170,10 @@ const EditProduct = () => {
                                     width: v.dimensions?.width || "",
                                     height: v.dimensions?.height || "",
                                 },
+                                existingImages: v.images || [],
+                                imagesToDelete: [],
+                                newImages: [],
+                                newImagePreviews: [],
                             })),
                         );
                     }
@@ -163,8 +215,8 @@ const EditProduct = () => {
 
         const totalImages =
             existingImages.length + newImages.length + files.length;
-        if (totalImages > 10) {
-            setError("Maximum 10 images allowed");
+        if (totalImages > 5) {
+            setError("Maximum 5 images allowed for product");
             return;
         }
 
@@ -292,6 +344,77 @@ const EditProduct = () => {
         });
     };
 
+    // Remove existing variant image
+    const removeExistingVariantImage = (variantIndex, publicId) => {
+        setVariants((prev) => {
+            const updated = [...prev];
+            updated[variantIndex].imagesToDelete = [
+                ...updated[variantIndex].imagesToDelete,
+                publicId,
+            ];
+            updated[variantIndex].existingImages = updated[
+                variantIndex
+            ].existingImages.filter((img) => img.publicId !== publicId);
+            return updated;
+        });
+    };
+
+    // Handle new variant image upload
+    const handleVariantImageChange = (variantIndex, e) => {
+        const files = Array.from(e.target.files);
+        const variant = variants[variantIndex];
+
+        const totalImages =
+            variant.existingImages.length +
+            variant.newImages.length +
+            files.length;
+        if (totalImages > 5) {
+            setError(`Maximum 5 images allowed per variant`);
+            return;
+        }
+
+        setVariants((prev) => {
+            const updated = [...prev];
+            updated[variantIndex].newImages = [
+                ...updated[variantIndex].newImages,
+                ...files,
+            ];
+            return updated;
+        });
+
+        // Create previews
+        files.forEach((file) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setVariants((prev) => {
+                    const updated = [...prev];
+                    updated[variantIndex].newImagePreviews = [
+                        ...updated[variantIndex].newImagePreviews,
+                        reader.result,
+                    ];
+                    return updated;
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        setError(null);
+    };
+
+    // Remove new variant image
+    const removeNewVariantImage = (variantIndex, imageIndex) => {
+        setVariants((prev) => {
+            const updated = [...prev];
+            updated[variantIndex].newImages = updated[
+                variantIndex
+            ].newImages.filter((_, i) => i !== imageIndex);
+            updated[variantIndex].newImagePreviews = updated[
+                variantIndex
+            ].newImagePreviews.filter((_, i) => i !== imageIndex);
+            return updated;
+        });
+    };
+
     // Add new variant
     const addVariant = () => {
         setVariants((prev) => [
@@ -310,6 +433,10 @@ const EditProduct = () => {
                     width: "",
                     height: "",
                 },
+                existingImages: [],
+                imagesToDelete: [],
+                newImages: [],
+                newImagePreviews: [],
             },
         ]);
     };
@@ -482,8 +609,69 @@ const EditProduct = () => {
             const response = await updateProduct(id, data);
 
             if (response.success) {
+                const product = response.data;
+                logger.info("Product updated successfully:", product);
+
+                // Handle variant images (upload/delete)
+                if (product.variants && product.variants.length > 0) {
+                    for (let i = 0; i < product.variants.length; i++) {
+                        const variant = product.variants[i];
+                        const variantData = variants.find(
+                            (v) => v._id === variant._id,
+                        );
+
+                        if (variantData) {
+                            // Delete variant images if any
+                            if (
+                                variantData.imagesToDelete &&
+                                variantData.imagesToDelete.length > 0
+                            ) {
+                                try {
+                                    await deleteVariantImages(
+                                        variant._id,
+                                        variantData.imagesToDelete,
+                                    );
+                                    logger.debug(
+                                        `Deleted ${variantData.imagesToDelete.length} images from variant ${variant._id}`,
+                                    );
+                                } catch (imgErr) {
+                                    logger.error(
+                                        `Error deleting variant images:`,
+                                        imgErr,
+                                    );
+                                }
+                            }
+
+                            // Upload new variant images if any
+                            if (
+                                variantData.newImages &&
+                                variantData.newImages.length > 0
+                            ) {
+                                try {
+                                    const variantImageData = new FormData();
+                                    variantData.newImages.forEach((img) => {
+                                        variantImageData.append("images", img);
+                                    });
+
+                                    await uploadVariantImages(
+                                        variant._id,
+                                        variantImageData,
+                                    );
+                                    logger.debug(
+                                        `Uploaded ${variantData.newImages.length} images for variant ${variant._id}`,
+                                    );
+                                } catch (imgErr) {
+                                    logger.error(
+                                        `Error uploading variant images:`,
+                                        imgErr,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
                 setSuccess(true);
-                logger.info("Product updated successfully:", response.data);
 
                 // Redirect to product detail page
                 setTimeout(() => {
@@ -524,14 +712,14 @@ const EditProduct = () => {
 
             {/* Success Message */}
             {success && (
-                <div className="bg-success bg-opacity-10 border border-success text-success px-4 py-3 rounded-lg">
+                <div className="bg-success/10 bg-opacity-10 border border-success text-success px-4 py-3 rounded-lg">
                     Product updated successfully! Redirecting...
                 </div>
             )}
 
             {/* Error Message */}
             {error && (
-                <div className="bg-danger bg-opacity-10 border border-danger text-danger px-4 py-3 rounded-lg">
+                <div className="bg-danger/10 bg-opacity-10 border border-danger text-danger px-4 py-3 rounded-lg">
                     {error}
                 </div>
             )}
@@ -599,18 +787,21 @@ const EditProduct = () => {
                             <label className="block text-sm font-medium text-text mb-1">
                                 Category <span className="text-danger">*</span>
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 name="category"
                                 value={formData.category}
                                 onChange={handleInputChange}
                                 required
-                                placeholder="Category ID"
-                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                            <p className="text-xs text-text-secondary mt-1">
-                                Enter the category ObjectId
-                            </p>
+                                disabled={loadingCategories}
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                            >
+                                <option value="">Select Category</option>
+                                {categories.map((cat) => (
+                                    <option key={cat._id} value={cat._id}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Subcategory */}
@@ -618,14 +809,25 @@ const EditProduct = () => {
                             <label className="block text-sm font-medium text-text mb-1">
                                 Subcategory
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 name="subcategory"
                                 value={formData.subcategory}
                                 onChange={handleInputChange}
-                                placeholder="Subcategory ID (Optional)"
-                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
+                                disabled={
+                                    !formData.category ||
+                                    subcategories.length === 0
+                                }
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                            >
+                                <option value="">
+                                    Select Subcategory (Optional)
+                                </option>
+                                {subcategories.map((subcat) => (
+                                    <option key={subcat._id} value={subcat._id}>
+                                        {subcat.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Purity */}
@@ -724,7 +926,7 @@ const EditProduct = () => {
                                             <img
                                                 src={image.url}
                                                 alt={`Product ${index + 1}`}
-                                                className="w-full h-32 object-cover rounded-lg border border-border"
+                                                className="w-full aspect-square object-cover rounded-lg border border-border"
                                             />
                                             <button
                                                 type="button"
@@ -762,7 +964,7 @@ const EditProduct = () => {
                             />
                             <p className="text-xs text-text-secondary mt-1">
                                 Total:{" "}
-                                {existingImages.length + newImages.length}/10
+                                {existingImages.length + newImages.length}/5
                                 images
                             </p>
                         </div>
@@ -782,7 +984,7 @@ const EditProduct = () => {
                                             <img
                                                 src={preview}
                                                 alt={`New ${index + 1}`}
-                                                className="w-full h-32 object-cover rounded-lg border border-border"
+                                                className="w-full aspect-square object-cover rounded-lg border  border-border"
                                             />
                                             <button
                                                 type="button"
@@ -1326,6 +1528,114 @@ const EditProduct = () => {
                                         No attributes added
                                     </p>
                                 )}
+                            </div>
+
+                            {/* Variant Images */}
+                            <div className="pt-4 border-t border-border space-y-3">
+                                <label className="block text-sm font-medium text-text">
+                                    Variant Images (Optional, max 5)
+                                </label>
+
+                                {/* Existing Variant Images */}
+                                {variant.existingImages &&
+                                    variant.existingImages.length > 0 && (
+                                        <div>
+                                            <p className="text-xs text-text-secondary mb-2">
+                                                Existing Images (
+                                                {variant.existingImages.length})
+                                            </p>
+                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                                {variant.existingImages.map(
+                                                    (img, imgIndex) => (
+                                                        <div
+                                                            key={img.publicId}
+                                                            className="relative group"
+                                                        >
+                                                            <img
+                                                                src={img.url}
+                                                                alt={`Variant ${vIndex + 1} Image ${imgIndex + 1}`}
+                                                                className="w-full aspect-square object-cover rounded-lg border border-border"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    removeExistingVariantImage(
+                                                                        vIndex,
+                                                                        img.publicId,
+                                                                    )
+                                                                }
+                                                                className="absolute top-1 right-1 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <MdDelete
+                                                                    size={14}
+                                                                />
+                                                            </button>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                {/* Upload New Variant Images */}
+                                <div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={(e) =>
+                                            handleVariantImageChange(vIndex, e)
+                                        }
+                                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                                    />
+                                    <p className="text-xs text-text-secondary mt-1">
+                                        Total:{" "}
+                                        {(variant.existingImages?.length || 0) +
+                                            (variant.newImages?.length || 0)}
+                                        /5 images
+                                    </p>
+                                </div>
+
+                                {/* New Variant Image Previews */}
+                                {variant.newImagePreviews &&
+                                    variant.newImagePreviews.length > 0 && (
+                                        <div>
+                                            <p className="text-xs text-text-secondary mb-2">
+                                                New Images to Upload (
+                                                {variant.newImages.length})
+                                            </p>
+                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                                {variant.newImagePreviews.map(
+                                                    (preview, imgIndex) => (
+                                                        <div
+                                                            key={imgIndex}
+                                                            className="relative group"
+                                                        >
+                                                            <img
+                                                                src={preview}
+                                                                alt={`New Variant ${vIndex + 1} Image ${imgIndex + 1}`}
+                                                                className="w-full aspect-square object-cover rounded-lg border border-border"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    removeNewVariantImage(
+                                                                        vIndex,
+                                                                        imgIndex,
+                                                                    )
+                                                                }
+                                                                className="absolute top-1 right-1 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <MdDelete
+                                                                    size={14}
+                                                                />
+                                                            </button>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                             </div>
                         </div>
                     ))}

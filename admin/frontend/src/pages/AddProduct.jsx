@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdArrowBack, MdSave, MdAdd, MdDelete, MdImage } from "react-icons/md";
-import { createProduct } from "../api/products.api";
+import { createProduct, uploadVariantImages } from "../api/products.api";
+import { getAllCategories } from "../api/categories.api";
 import { handleApiError } from "../utils/axios";
 import logger from "../utils/logger.util";
 import Loader from "../components/common/Loader";
@@ -12,6 +13,11 @@ const AddProduct = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+
+    // Categories and subcategories
+    const [categories, setCategories] = useState([]);
+    const [subcategories, setSubcategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
 
     // Product form data
     const [formData, setFormData] = useState({
@@ -60,12 +66,53 @@ const AddProduct = () => {
                 width: "",
                 height: "",
             },
+            images: [],
+            imagePreviews: [],
         },
     ]);
 
     // Tag input
     const [tagInput, setTagInput] = useState("");
     const [keywordInput, setKeywordInput] = useState("");
+
+    // Fetch categories on mount
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                setLoadingCategories(true);
+                const response = await getAllCategories();
+                if (response.success) {
+                    setCategories(response.data);
+                    logger.debug("Categories loaded:", response.data);
+                }
+            } catch (err) {
+                logger.error("Error fetching categories:", err);
+                setError("Failed to load categories");
+            } finally {
+                setLoadingCategories(false);
+            }
+        };
+
+        fetchCategories();
+    }, []);
+
+    // Update subcategories when category changes
+    useEffect(() => {
+        if (formData.category) {
+            const selectedCategory = categories.find(
+                (cat) => cat._id === formData.category,
+            );
+            if (selectedCategory && selectedCategory.subcategories) {
+                setSubcategories(selectedCategory.subcategories);
+            } else {
+                setSubcategories([]);
+            }
+            // Reset subcategory when category changes
+            setFormData((prev) => ({ ...prev, subcategory: "" }));
+        } else {
+            setSubcategories([]);
+        }
+    }, [formData.category, categories]);
 
     // Handle form input change
     const handleInputChange = (e) => {
@@ -80,8 +127,8 @@ const AddProduct = () => {
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
 
-        if (images.length + files.length > 10) {
-            setError("Maximum 10 images allowed");
+        if (images.length + files.length > 5) {
+            setError("Maximum 5 images allowed for product");
             return;
         }
 
@@ -206,6 +253,56 @@ const AddProduct = () => {
         });
     };
 
+    // Handle variant image upload
+    const handleVariantImageChange = (variantIndex, e) => {
+        const files = Array.from(e.target.files);
+        const variant = variants[variantIndex];
+
+        if (variant.images.length + files.length > 5) {
+            setError(`Maximum 5 images allowed per variant`);
+            return;
+        }
+
+        const newImages = [...variant.images, ...files];
+        const newPreviews = [...variant.imagePreviews];
+
+        files.forEach((file) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                newPreviews.push(reader.result);
+                // Update state after all previews are loaded
+                setVariants((prev) => {
+                    const updated = [...prev];
+                    updated[variantIndex].imagePreviews = newPreviews;
+                    return updated;
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        setVariants((prev) => {
+            const updated = [...prev];
+            updated[variantIndex].images = newImages;
+            return updated;
+        });
+
+        setError(null);
+    };
+
+    // Remove variant image
+    const removeVariantImage = (variantIndex, imageIndex) => {
+        setVariants((prev) => {
+            const updated = [...prev];
+            updated[variantIndex].images = updated[variantIndex].images.filter(
+                (_, i) => i !== imageIndex,
+            );
+            updated[variantIndex].imagePreviews = updated[
+                variantIndex
+            ].imagePreviews.filter((_, i) => i !== imageIndex);
+            return updated;
+        });
+    };
+
     // Add variant
     const addVariant = () => {
         setVariants((prev) => [
@@ -224,6 +321,8 @@ const AddProduct = () => {
                     width: "",
                     height: "",
                 },
+                images: [],
+                imagePreviews: [],
             },
         ]);
     };
@@ -377,12 +476,45 @@ const AddProduct = () => {
             const response = await createProduct(data);
 
             if (response.success) {
+                const product = response.data;
+                logger.info("Product created successfully:", product);
+
+                // Upload variant images if any
+                if (product.variants && product.variants.length > 0) {
+                    for (let i = 0; i < product.variants.length; i++) {
+                        const variant = product.variants[i];
+                        const variantImages = variants[i].images;
+
+                        if (variantImages && variantImages.length > 0) {
+                            try {
+                                const variantImageData = new FormData();
+                                variantImages.forEach((img) => {
+                                    variantImageData.append("images", img);
+                                });
+
+                                await uploadVariantImages(
+                                    variant._id,
+                                    variantImageData,
+                                );
+                                logger.debug(
+                                    `Uploaded ${variantImages.length} images for variant ${variant._id}`,
+                                );
+                            } catch (imgErr) {
+                                logger.error(
+                                    `Error uploading variant images for ${variant._id}:`,
+                                    imgErr,
+                                );
+                                // Continue with other variants even if one fails
+                            }
+                        }
+                    }
+                }
+
                 setSuccess(true);
-                logger.info("Product created successfully:", response.data);
 
                 // Redirect to product detail page
                 setTimeout(() => {
-                    navigate(`/products/${response.data._id}`);
+                    navigate(`/products/${product._id}`);
                 }, 1500);
             }
         } catch (err) {
@@ -488,18 +620,21 @@ const AddProduct = () => {
                             <label className="block text-sm font-medium text-text mb-1">
                                 Category <span className="text-danger">*</span>
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 name="category"
                                 value={formData.category}
                                 onChange={handleInputChange}
                                 required
-                                placeholder="Category ID"
-                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                            <p className="text-xs text-text-secondary mt-1">
-                                Enter the category ObjectId
-                            </p>
+                                disabled={loadingCategories}
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                            >
+                                <option value="">Select Category</option>
+                                {categories.map((cat) => (
+                                    <option key={cat._id} value={cat._id}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Subcategory */}
@@ -507,14 +642,25 @@ const AddProduct = () => {
                             <label className="block text-sm font-medium text-text mb-1">
                                 Subcategory
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 name="subcategory"
                                 value={formData.subcategory}
                                 onChange={handleInputChange}
-                                placeholder="Subcategory ID (Optional)"
-                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
+                                disabled={
+                                    !formData.category ||
+                                    subcategories.length === 0
+                                }
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                            >
+                                <option value="">
+                                    Select Subcategory (Optional)
+                                </option>
+                                {subcategories.map((subcat) => (
+                                    <option key={subcat._id} value={subcat._id}>
+                                        {subcat.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Purity */}
@@ -600,7 +746,7 @@ const AddProduct = () => {
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-text mb-2">
-                                Upload Images (1-10 images required)
+                                Upload Product Images (1-5 images required)
                             </label>
                             <input
                                 type="file"
@@ -610,7 +756,7 @@ const AddProduct = () => {
                                 className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                             />
                             <p className="text-xs text-text-secondary mt-1">
-                                {images.length}/10 images uploaded
+                                {images.length}/5 images uploaded
                             </p>
                         </div>
 
@@ -1160,6 +1306,57 @@ const AddProduct = () => {
                                     <p className="text-sm text-text-secondary">
                                         No attributes added
                                     </p>
+                                )}
+                            </div>
+
+                            {/* Variant Images */}
+                            <div className="pt-4 border-t border-border">
+                                <label className="block text-sm font-medium text-text mb-2">
+                                    Variant Images (Optional, max 5)
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) =>
+                                        handleVariantImageChange(vIndex, e)
+                                    }
+                                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                                <p className="text-xs text-text-secondary mt-1">
+                                    {variant.images.length}/5 images
+                                </p>
+
+                                {/* Variant Image Previews */}
+                                {variant.imagePreviews.length > 0 && (
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-3">
+                                        {variant.imagePreviews.map(
+                                            (preview, imgIndex) => (
+                                                <div
+                                                    key={imgIndex}
+                                                    className="relative group"
+                                                >
+                                                    <img
+                                                        src={preview}
+                                                        alt={`Variant ${vIndex + 1} Image ${imgIndex + 1}`}
+                                                        className="w-full h-24 object-cover rounded-lg border border-border"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            removeVariantImage(
+                                                                vIndex,
+                                                                imgIndex,
+                                                            )
+                                                        }
+                                                        className="absolute top-1 right-1 bg-danger text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <MdDelete size={14} />
+                                                    </button>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>
