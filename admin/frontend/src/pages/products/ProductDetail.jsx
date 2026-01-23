@@ -10,6 +10,7 @@ import {
     MdCancel,
     MdExpandMore,
     MdExpandLess,
+    MdImage,
 } from "react-icons/md";
 import { getProductById } from "../../api/products.api";
 import { handleApiError } from "../../utils/axios";
@@ -566,82 +567,110 @@ const ProductDetail = () => {
                 </h3>
 
                 {product.variants && product.variants.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="space-y-3">
                         {product.variants.map((variant) => (
                             <div
                                 key={variant._id}
-                                className="bg-background border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                                className="border border-border rounded-lg overflow-hidden bg-background"
                             >
-                                {/* Variant Image */}
-                                {variant.images && variant.images.length > 0 ? (
-                                    <div className="relative h-48 bg-gray-100">
-                                        <img
-                                            src={variant.images[0].url}
-                                            alt={
-                                                variant.images[0].alt ||
-                                                variant.variantName
-                                            }
-                                            className="w-full h-full object-cover"
-                                        />
-                                        {variant.images.length > 1 && (
-                                            <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                                                +{variant.images.length - 1}{" "}
-                                                more
-                                            </div>
-                                        )}
-                                        {variant.hasDiscount && (
-                                            <div className="absolute top-2 left-2 bg-success text-white text-xs font-semibold px-2 py-1 rounded">
-                                                {variant.discountPercent}% OFF
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="h-48 bg-gray-100 flex items-center justify-center text-text-secondary">
-                                        No Image
-                                    </div>
-                                )}
+                                {/* Collapsed Row - Table-like Header */}
+                                <button
+                                    onClick={() => toggleVariant(variant._id)}
+                                    className="w-full hover:bg-border/20 transition-colors"
+                                >
+                                    <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center">
+                                        {/* Image Thumbnail */}
+                                        <div className="col-span-1">
+                                            {variant.images &&
+                                            variant.images.length > 0 ? (
+                                                <div className="relative w-12 h-12 rounded overflow-hidden border border-border">
+                                                    <img
+                                                        src={
+                                                            variant.images[0]
+                                                                .url
+                                                        }
+                                                        alt={
+                                                            variant.images[0]
+                                                                .alt ||
+                                                            variant.variantName
+                                                        }
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    {variant.images.length >
+                                                        1 && (
+                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs font-semibold">
+                                                            +
+                                                            {variant.images
+                                                                .length - 1}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="w-12 h-12 rounded bg-gray-200 flex items-center justify-center text-xs text-text-secondary">
+                                                    <MdImage size={20} />
+                                                </div>
+                                            )}
+                                        </div>
 
-                                {/* Variant Content */}
-                                <div className="p-4">
-                                    {/* Header */}
-                                    <div className="mb-3 pb-3 border-b border-border">
-                                        <h4 className="text-base font-semibold text-text mb-1">
-                                            {variant.variantName}
-                                        </h4>
-                                        <p className="text-xs text-text-secondary font-mono">
-                                            SKU: {variant.sku}
-                                        </p>
-                                    </div>
+                                        {/* Variant Name & SKU */}
+                                        <div className="col-span-3 text-left">
+                                            <div className="font-semibold text-sm text-text">
+                                                {variant.variantName}
+                                            </div>
+                                            <div className="text-xs text-text-secondary font-mono">
+                                                {variant.sku}
+                                            </div>
+                                        </div>
 
-                                    {/* Pricing */}
-                                    <div className="mb-3 pb-3 border-b border-border">
-                                        <div className="flex items-baseline gap-2 mb-1">
-                                            <span className="text-lg font-bold text-text">
-                                                {formatPrice(
-                                                    variant.sellingPrice,
-                                                )}
-                                            </span>
-                                            {variant.hasDiscount && (
-                                                <span className="text-sm text-text-secondary line-through">
-                                                    {formatPrice(variant.mrp)}
+                                        {/* Attributes */}
+                                        <div className="col-span-2 text-left">
+                                            {variant.attributes &&
+                                            variant.attributes.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {variant.attributes
+                                                        .slice(0, 2)
+                                                        .map((attr, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="text-xs bg-surface border border-border px-1.5 py-0.5 rounded"
+                                                            >
+                                                                {attr.value}
+                                                            </span>
+                                                        ))}
+                                                    {variant.attributes.length >
+                                                        2 && (
+                                                        <span className="text-xs text-text-secondary">
+                                                            +
+                                                            {variant.attributes
+                                                                .length - 2}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-text-secondary">
+                                                    -
                                                 </span>
                                             )}
                                         </div>
-                                        {variant.profitMargin !== undefined && (
-                                            <p className="text-xs text-success">
-                                                Profit: {variant.profitMargin}%
-                                            </p>
-                                        )}
-                                    </div>
 
-                                    {/* Stock Status */}
-                                    <div className="mb-3 pb-3 border-b border-border">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm text-text-secondary">
-                                                Stock
-                                            </span>
+                                        {/* Price */}
+                                        <div className="col-span-2 text-left">
+                                            <div className="font-semibold text-sm text-text">
+                                                {formatPrice(
+                                                    variant.sellingPrice,
+                                                )}
+                                            </div>
+                                            {variant.hasDiscount && (
+                                                <div className="text-xs text-text-secondary line-through">
+                                                    {formatPrice(variant.mrp)}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Stock */}
+                                        <div className="col-span-2 text-left">
                                             <span
-                                                className={`text-sm font-semibold ${
+                                                className={`text-sm font-medium ${
                                                     variant.stockStatus ===
                                                     "in_stock"
                                                         ? "text-success"
@@ -653,271 +682,411 @@ const ProductDetail = () => {
                                             >
                                                 {variant.stockQuantity} units
                                             </span>
-                                        </div>
-                                        {variant.stockStatus ===
-                                            "low_stock" && (
-                                            <p className="text-xs text-warning mt-1">
-                                                Low stock alert at{" "}
-                                                {variant.lowStockThreshold}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Attributes */}
-                                    {variant.attributes &&
-                                        variant.attributes.length > 0 && (
-                                            <div className="mb-3">
-                                                <h5 className="text-xs font-semibold text-text mb-2">
-                                                    Attributes
-                                                </h5>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {variant.attributes.map(
-                                                        (attr, idx) => (
-                                                            <span
-                                                                key={idx}
-                                                                className="text-xs bg-surface border border-border px-2 py-1 rounded"
-                                                            >
-                                                                {attr.key}:{" "}
-                                                                {attr.value}
-                                                            </span>
-                                                        ),
-                                                    )}
-                                                </div>
+                                            <div className="text-xs text-text-secondary">
+                                                {variant.stockStatus ===
+                                                "in_stock"
+                                                    ? "In Stock"
+                                                    : variant.stockStatus ===
+                                                        "low_stock"
+                                                      ? "Low Stock"
+                                                      : "Out of Stock"}
                                             </div>
-                                        )}
+                                        </div>
 
-                                    {/* Quick Info */}
-                                    <div className="flex items-center justify-between text-xs text-text-secondary mt-3">
-                                        <span>Weight: {variant.weight}g</span>
-                                        <span className="flex items-center gap-1">
+                                        {/* Status & Expand */}
+                                        <div className="col-span-2 flex items-center justify-end gap-3">
                                             {variant.isActive ? (
-                                                <>
-                                                    <MdCheckCircle
-                                                        className="text-success"
-                                                        size={14}
-                                                    />
-                                                    Active
-                                                </>
+                                                <MdCheckCircle
+                                                    className="text-success"
+                                                    size={20}
+                                                />
                                             ) : (
-                                                <>
-                                                    <MdCancel
-                                                        className="text-danger"
-                                                        size={14}
-                                                    />
-                                                    Inactive
-                                                </>
+                                                <MdCancel
+                                                    className="text-danger"
+                                                    size={20}
+                                                />
                                             )}
-                                        </span>
+                                            {expandedVariants[variant._id] ? (
+                                                <MdExpandLess
+                                                    size={24}
+                                                    className="text-text-secondary"
+                                                />
+                                            ) : (
+                                                <MdExpandMore
+                                                    size={24}
+                                                    className="text-text-secondary"
+                                                />
+                                            )}
+                                        </div>
                                     </div>
+                                </button>
 
-                                    {/* Expand Button */}
-                                    <button
-                                        onClick={() =>
-                                            toggleVariant(variant._id)
-                                        }
-                                        className="w-full mt-3 py-2 bg-surface hover:bg-border/30 border border-border rounded text-sm font-medium text-text transition-colors flex items-center justify-center gap-1"
-                                    >
-                                        {expandedVariants[variant._id] ? (
-                                            <>
-                                                <MdExpandLess size={18} />
-                                                Show Less
-                                            </>
-                                        ) : (
-                                            <>
-                                                <MdExpandMore size={18} />
-                                                Show More
-                                            </>
-                                        )}
-                                    </button>
-
-                                    {/* Expanded Details */}
-                                    {expandedVariants[variant._id] && (
-                                        <div className="mt-4 pt-4 border-t border-border space-y-3">
-                                            {/* All Images */}
+                                {/* Expanded Content */}
+                                {expandedVariants[variant._id] && (
+                                    <div className="border-t border-border bg-surface/50">
+                                        <div className="p-6">
+                                            {/* Images Gallery */}
                                             {variant.images &&
-                                                variant.images.length > 1 && (
-                                                    <div>
-                                                        <h5 className="text-xs font-semibold text-text mb-2">
-                                                            All Images
-                                                        </h5>
-                                                        <div className="grid grid-cols-4 gap-2">
+                                                variant.images.length > 0 && (
+                                                    <div className="mb-6">
+                                                        <h4 className="text-sm font-semibold text-text mb-3 flex items-center gap-2">
+                                                            <MdImage
+                                                                size={18}
+                                                            />
+                                                            Variant Images (
+                                                            {
+                                                                variant.images
+                                                                    .length
+                                                            }
+                                                            )
+                                                        </h4>
+                                                        {/* <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"> */}
+                                                        <div className="flex items-center gap-1">
                                                             {variant.images.map(
                                                                 (img, idx) => (
-                                                                    <img
+                                                                    <div
                                                                         key={
                                                                             idx
                                                                         }
-                                                                        src={
-                                                                            img.url
-                                                                        }
-                                                                        alt={
-                                                                            img.alt ||
-                                                                            `Image ${idx + 1}`
-                                                                        }
-                                                                        className="w-full h-16 object-cover rounded border border-border"
-                                                                    />
+                                                                        className="relative w-32 aspect-square rounded-lg overflow-hidden border-2 border-border hover:border-primary transition-colors group"
+                                                                    >
+                                                                        <img
+                                                                            src={
+                                                                                img.url
+                                                                            }
+                                                                            alt={
+                                                                                img.alt ||
+                                                                                `Image ${idx + 1}`
+                                                                            }
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                                                        {img.isPrimary && (
+                                                                            <div className="absolute top-1 left-1 bg-primary text-white text-xs px-2 py-0.5 rounded">
+                                                                                Primary
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 ),
                                                             )}
                                                         </div>
                                                     </div>
                                                 )}
 
-                                            {/* Detailed Pricing */}
-                                            <div>
-                                                <h5 className="text-xs font-semibold text-text mb-2">
-                                                    Pricing Details
-                                                </h5>
-                                                <div className="space-y-1 text-xs">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            MRP:
-                                                        </span>
-                                                        <span className="text-text">
-                                                            {formatPrice(
-                                                                variant.mrp,
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            Selling:
-                                                        </span>
-                                                        <span className="text-text font-medium">
-                                                            {formatPrice(
-                                                                variant.sellingPrice,
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            Cost:
-                                                        </span>
-                                                        <span className="text-text">
-                                                            {formatPrice(
-                                                                variant.costPrice,
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    {variant.hasDiscount && (
+                                            {/* Details Grid */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                                {/* Pricing Details */}
+                                                <div className="bg-background rounded-lg p-4 border border-border">
+                                                    <h4 className="text-sm font-semibold text-text mb-3 pb-2 border-b border-border">
+                                                        Pricing
+                                                    </h4>
+                                                    <div className="space-y-2 text-sm">
                                                         <div className="flex justify-between">
                                                             <span className="text-text-secondary">
-                                                                Discount:
+                                                                MRP:
                                                             </span>
-                                                            <span className="text-success">
+                                                            <span className="text-text font-medium">
                                                                 {formatPrice(
-                                                                    variant.discountAmount,
+                                                                    variant.mrp,
                                                                 )}
                                                             </span>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Dimensions */}
-                                            {variant.dimensions && (
-                                                <div>
-                                                    <h5 className="text-xs font-semibold text-text mb-2">
-                                                        Dimensions
-                                                    </h5>
-                                                    <div className="space-y-1 text-xs">
-                                                        {variant.dimensions
-                                                            .length && (
-                                                            <div className="flex justify-between">
-                                                                <span className="text-text-secondary">
-                                                                    Length:
-                                                                </span>
-                                                                <span className="text-text">
-                                                                    {
-                                                                        variant
-                                                                            .dimensions
-                                                                            .length
-                                                                    }
-                                                                    cm
-                                                                </span>
-                                                            </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-text-secondary">
+                                                                Selling Price:
+                                                            </span>
+                                                            <span className="text-text font-semibold">
+                                                                {formatPrice(
+                                                                    variant.sellingPrice,
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-text-secondary">
+                                                                Cost Price:
+                                                            </span>
+                                                            <span className="text-text">
+                                                                {formatPrice(
+                                                                    variant.costPrice,
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        {variant.hasDiscount && (
+                                                            <>
+                                                                <div className="flex justify-between pt-2 border-t border-border">
+                                                                    <span className="text-text-secondary">
+                                                                        Discount:
+                                                                    </span>
+                                                                    <span className="text-success font-semibold">
+                                                                        {
+                                                                            variant.discountPercent
+                                                                        }
+                                                                        %
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-text-secondary">
+                                                                        Saved:
+                                                                    </span>
+                                                                    <span className="text-success">
+                                                                        {formatPrice(
+                                                                            variant.discountAmount,
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                            </>
                                                         )}
-                                                        {variant.dimensions
-                                                            .width && (
-                                                            <div className="flex justify-between">
+                                                        {variant.profitMargin !==
+                                                            undefined && (
+                                                            <div className="flex justify-between pt-2 border-t border-border">
                                                                 <span className="text-text-secondary">
-                                                                    Width:
+                                                                    Profit
+                                                                    Margin:
                                                                 </span>
-                                                                <span className="text-text">
+                                                                <span className="text-success font-semibold">
                                                                     {
-                                                                        variant
-                                                                            .dimensions
-                                                                            .width
+                                                                        variant.profitMargin
                                                                     }
-                                                                    cm
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {variant.dimensions
-                                                            .height && (
-                                                            <div className="flex justify-between">
-                                                                <span className="text-text-secondary">
-                                                                    Height:
-                                                                </span>
-                                                                <span className="text-text">
-                                                                    {
-                                                                        variant
-                                                                            .dimensions
-                                                                            .height
-                                                                    }
-                                                                    cm
+                                                                    %
                                                                 </span>
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
-                                            )}
 
-                                            {/* Timestamps */}
-                                            <div>
-                                                <h5 className="text-xs font-semibold text-text mb-2">
-                                                    History
-                                                </h5>
-                                                <div className="space-y-1 text-xs">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-text-secondary">
-                                                            Created:
-                                                        </span>
-                                                        <span className="text-text">
-                                                            {formatDate(
-                                                                variant.createdAt,
+                                                {/* Stock & Inventory */}
+                                                <div className="bg-background rounded-lg p-4 border border-border">
+                                                    <h4 className="text-sm font-semibold text-text mb-3 pb-2 border-b border-border">
+                                                        Inventory
+                                                    </h4>
+                                                    <div className="space-y-2 text-sm">
+                                                        <div className="flex justify-between">
+                                                            <span className="text-text-secondary">
+                                                                Quantity:
+                                                            </span>
+                                                            <span
+                                                                className={`font-semibold ${
+                                                                    variant.stockQuantity >
+                                                                    0
+                                                                        ? "text-success"
+                                                                        : "text-danger"
+                                                                }`}
+                                                            >
+                                                                {
+                                                                    variant.stockQuantity
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-text-secondary">
+                                                                Status:
+                                                            </span>
+                                                            <span
+                                                                className={`font-medium capitalize ${
+                                                                    variant.stockStatus ===
+                                                                    "in_stock"
+                                                                        ? "text-success"
+                                                                        : variant.stockStatus ===
+                                                                            "low_stock"
+                                                                          ? "text-warning"
+                                                                          : "text-danger"
+                                                                }`}
+                                                            >
+                                                                {variant.stockStatus?.replace(
+                                                                    "_",
+                                                                    " ",
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-text-secondary">
+                                                                Low Stock Alert:
+                                                            </span>
+                                                            <span className="text-text">
+                                                                {
+                                                                    variant.lowStockThreshold
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between pt-2 border-t border-border">
+                                                            <span className="text-text-secondary">
+                                                                Weight:
+                                                            </span>
+                                                            <span className="text-text font-medium">
+                                                                {variant.weight}
+                                                                g
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Attributes & Dimensions */}
+                                                <div className="bg-background rounded-lg p-4 border border-border">
+                                                    <h4 className="text-sm font-semibold text-text mb-3 pb-2 border-b border-border">
+                                                        Specifications
+                                                    </h4>
+                                                    <div className="space-y-3">
+                                                        {/* Attributes */}
+                                                        {variant.attributes &&
+                                                            variant.attributes
+                                                                .length > 0 && (
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-text-secondary mb-2">
+                                                                        Attributes
+                                                                    </p>
+                                                                    <div className="space-y-1.5">
+                                                                        {variant.attributes.map(
+                                                                            (
+                                                                                attr,
+                                                                                idx,
+                                                                            ) => (
+                                                                                <div
+                                                                                    key={
+                                                                                        idx
+                                                                                    }
+                                                                                    className="flex justify-between text-sm"
+                                                                                >
+                                                                                    <span className="text-text-secondary">
+                                                                                        {
+                                                                                            attr.key
+                                                                                        }
+
+                                                                                        :
+                                                                                    </span>
+                                                                                    <span className="text-text font-medium">
+                                                                                        {
+                                                                                            attr.value
+                                                                                        }
+                                                                                    </span>
+                                                                                </div>
+                                                                            ),
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             )}
-                                                        </span>
+
+                                                        {/* Dimensions */}
+                                                        {variant.dimensions && (
+                                                            <div className="pt-2 border-t border-border">
+                                                                <p className="text-xs font-semibold text-text-secondary mb-2">
+                                                                    Dimensions
+                                                                </p>
+                                                                <div className="space-y-1.5">
+                                                                    {variant
+                                                                        .dimensions
+                                                                        .length && (
+                                                                        <div className="flex justify-between text-sm">
+                                                                            <span className="text-text-secondary">
+                                                                                Length:
+                                                                            </span>
+                                                                            <span className="text-text">
+                                                                                {
+                                                                                    variant
+                                                                                        .dimensions
+                                                                                        .length
+                                                                                }
+                                                                                cm
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                    {variant
+                                                                        .dimensions
+                                                                        .width && (
+                                                                        <div className="flex justify-between text-sm">
+                                                                            <span className="text-text-secondary">
+                                                                                Width:
+                                                                            </span>
+                                                                            <span className="text-text">
+                                                                                {
+                                                                                    variant
+                                                                                        .dimensions
+                                                                                        .width
+                                                                                }
+                                                                                cm
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                    {variant
+                                                                        .dimensions
+                                                                        .height && (
+                                                                        <div className="flex justify-between text-sm">
+                                                                            <span className="text-text-secondary">
+                                                                                Height:
+                                                                            </span>
+                                                                            <span className="text-text">
+                                                                                {
+                                                                                    variant
+                                                                                        .dimensions
+                                                                                        .height
+                                                                                }
+                                                                                cm
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    {variant.updatedAt !==
-                                                        variant.createdAt && (
+                                                </div>
+
+                                                {/* Metadata */}
+                                                <div className="bg-background rounded-lg p-4 border border-border">
+                                                    <h4 className="text-sm font-semibold text-text mb-3 pb-2 border-b border-border">
+                                                        History
+                                                    </h4>
+                                                    <div className="space-y-2 text-sm">
                                                         <div className="flex justify-between">
                                                             <span className="text-text-secondary">
-                                                                Updated:
+                                                                Sort Order:
                                                             </span>
                                                             <span className="text-text">
+                                                                {
+                                                                    variant.sortOrder
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-text-secondary">
+                                                                Created:
+                                                            </span>
+                                                            <span className="text-text text-xs">
                                                                 {formatDate(
-                                                                    variant.updatedAt,
+                                                                    variant.createdAt,
                                                                 )}
                                                             </span>
                                                         </div>
-                                                    )}
-                                                    {variant.lastPriceUpdate && (
-                                                        <div className="flex justify-between">
-                                                            <span className="text-text-secondary">
-                                                                Price Updated:
-                                                            </span>
-                                                            <span className="text-text">
-                                                                {formatDate(
-                                                                    variant.lastPriceUpdate,
-                                                                )}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                        {variant.updatedAt !==
+                                                            variant.createdAt && (
+                                                            <div className="flex justify-between">
+                                                                <span className="text-text-secondary">
+                                                                    Updated:
+                                                                </span>
+                                                                <span className="text-text text-xs">
+                                                                    {formatDate(
+                                                                        variant.updatedAt,
+                                                                    )}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {variant.lastPriceUpdate && (
+                                                            <div className="flex justify-between pt-2 border-t border-border">
+                                                                <span className="text-text-secondary">
+                                                                    Price
+                                                                    Update:
+                                                                </span>
+                                                                <span className="text-text text-xs">
+                                                                    {formatDate(
+                                                                        variant.lastPriceUpdate,
+                                                                    )}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
