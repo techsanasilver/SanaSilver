@@ -1,8 +1,3 @@
-/**
- * Bulk Operations API
- * Handles bulk import/export operations for products
- */
-
 import axiosInstance from "../utils/axios";
 
 /**
@@ -16,7 +11,7 @@ export const exportProducts = async (filters = {}) => {
         filters,
         {
             responseType: "blob", // Important: tells axios to expect binary data
-        }
+        },
     );
 
     // Return blob for download
@@ -29,7 +24,7 @@ export const exportProducts = async (filters = {}) => {
  */
 export const downloadExportedFile = (
     blob,
-    filename = "products-export.xlsx"
+    filename = "products-export.xlsx",
 ) => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -58,31 +53,29 @@ export const importProducts = async (file) => {
                 "Content-Type": "multipart/form-data",
             },
             timeout: 120000, // 2 minutes timeout for large imports
-        }
+        },
     );
 
     return response.data;
 };
 
 /**
- * Get bulk operation status
+ * Get bulk operation by ID
  * @param {string} operationId - The operation ID to check
- * @returns {Promise} Operation status
+ * @returns {Promise} Operation details
  */
-export const getBulkOperationStatus = async (operationId) => {
-    const response = await axiosInstance.get(
-        `/bulk-operations/status/${operationId}`
-    );
+export const getBulkOperation = async (operationId) => {
+    const response = await axiosInstance.get(`/bulk-operations/${operationId}`);
     return response.data;
 };
 
 /**
- * Get bulk operation history
- * @param {Object} params - Query parameters (page, limit, etc.)
- * @returns {Promise} Operation history
+ * List bulk operations
+ * @param {Object} params - Query parameters (type, status, page, limit)
+ * @returns {Promise} Operations list with pagination
  */
-export const getBulkOperationHistory = async (params = {}) => {
-    const response = await axiosInstance.get("/bulk-operations/history", {
+export const listBulkOperations = async (params = {}) => {
+    const response = await axiosInstance.get("/bulk-operations", {
         params,
     });
     return response.data;
@@ -103,7 +96,7 @@ export default {
     exportProducts,
     downloadExportedFile,
     importProducts,
-    getBulkOperationStatus,
-    getBulkOperationHistory,
+    getBulkOperation,
+    listBulkOperations,
     downloadTemplate,
 };

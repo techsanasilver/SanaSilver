@@ -10,6 +10,7 @@ import ProductDetail from "./pages/products/ProductDetail";
 import AddProduct from "./pages/products/AddProduct";
 import EditProduct from "./pages/products/EditProduct";
 import Categories from "./pages/products/Categories";
+import BulkOperations from "./pages/BulkOperations";
 import Unauthorized from "./pages/Unauthorized";
 
 const App = () => {
@@ -46,10 +47,7 @@ const App = () => {
                 {/* Other Routes */}
                 <Route path="/orders" element={<div>Orders Page</div>} />
                 <Route path="/customers" element={<div>Customers Page</div>} />
-                <Route
-                    path="/bulk-operations"
-                    element={<div>Bulk Operations Page</div>}
-                />
+                <Route path="/bulk-operations" element={<BulkOperations />} />
                 <Route path="/analytics" element={<div>Analytics Page</div>} />
                 <Route path="/settings" element={<div>Settings Page</div>} />
             </Route>
