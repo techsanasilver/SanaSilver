@@ -9,6 +9,7 @@ import Products from "./pages/products/Products";
 import ProductDetail from "./pages/products/ProductDetail";
 import AddProduct from "./pages/products/AddProduct";
 import EditProduct from "./pages/products/EditProduct";
+import Categories from "./pages/products/Categories";
 import Unauthorized from "./pages/Unauthorized";
 
 const App = () => {
@@ -40,6 +41,7 @@ const App = () => {
                 <Route path="/products/add" element={<AddProduct />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/products/:id/edit" element={<EditProduct />} />
+                <Route path="/products/categories" element={<Categories />} />
 
                 {/* Other Routes */}
                 <Route path="/orders" element={<div>Orders Page</div>} />

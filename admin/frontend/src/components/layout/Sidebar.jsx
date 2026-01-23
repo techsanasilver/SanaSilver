@@ -11,6 +11,7 @@ import {
     MdExpandLess,
     MdAdd,
     MdList,
+    MdCategory,
 } from "react-icons/md";
 
 const Sidebar = ({ isOpen, isCollapsed, isMobile, onClose }) => {
@@ -35,6 +36,11 @@ const Sidebar = ({ isOpen, isCollapsed, isMobile, onClose }) => {
             submenu: [
                 { path: "/products", icon: MdList, label: "All Products" },
                 { path: "/products/add", icon: MdAdd, label: "Add Product" },
+                {
+                    path: "/products/categories",
+                    icon: MdCategory,
+                    label: "Categories",
+                },
             ],
         },
         { path: "/orders", icon: MdShoppingCart, label: "Orders" },
