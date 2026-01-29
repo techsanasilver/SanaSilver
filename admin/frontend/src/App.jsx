@@ -11,6 +11,7 @@ import AddProduct from "./pages/products/AddProduct";
 import EditProduct from "./pages/products/EditProduct";
 import Categories from "./pages/products/Categories";
 import BulkOperations from "./pages/BulkOperations";
+import Banners from "./pages/Banners";
 import Unauthorized from "./pages/Unauthorized";
 
 const App = () => {
@@ -47,6 +48,7 @@ const App = () => {
                 {/* Other Routes */}
                 <Route path="/orders" element={<div>Orders Page</div>} />
                 <Route path="/customers" element={<div>Customers Page</div>} />
+                <Route path="/banners" element={<Banners />} />
                 <Route path="/bulk-operations" element={<BulkOperations />} />
                 <Route path="/analytics" element={<div>Analytics Page</div>} />
                 <Route path="/settings" element={<div>Settings Page</div>} />
