@@ -9,7 +9,7 @@ import errorHandler from "./shared/middlewares/error.middleware.js";
 import connectDB from "./shared/config/db.config.js";
 
 // Import feature routes
-// import authRoutes from "./features/auth/auth.routes.js";
+import authRoutes from "./features/auth/auth.routes.js";
 // import productRoutes from './features/products/product.routes.js';
 // Add more feature route imports here as you create them
 
@@ -41,7 +41,7 @@ app.get("/health", (req, res) => {
 });
 
 // Feature-based API routes
-// app.use("/api/auth", authRoutes);
+app.use("/api/auth", authRoutes);
 // app.use('/api/products', productRoutes);
 // Add more feature routes here as you create them
 

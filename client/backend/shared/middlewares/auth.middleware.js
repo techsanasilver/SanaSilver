@@ -1,12 +1,7 @@
-/**
- * Authentication Middleware
- * Protects routes requiring authentication
- * Verifies JWT access token and attaches user to request
- */
-
 import jwt from "jsonwebtoken";
 import apiResponse from "../utils/response.util.js";
 import logger from "../utils/logger.util.js";
+import User from "../../features/auth/user.model.js";
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -23,27 +18,34 @@ const authMiddleware = async (req, res, next) => {
             if (error.name === "TokenExpiredError") {
                 return apiResponse.unauthorized(
                     res,
-                    "Token expired. Please refresh your token"
+                    "Token expired. Please refresh your token",
                 );
             }
             return apiResponse.unauthorized(res, "Invalid token");
         }
 
-        // Note: Once you create User model, import it and verify user exists
-        // import User from "../../features/auth/user.model.js";
-        // const user = await User.findById(decoded.userId);
-        // if (!user) {
-        //     return apiResponse.unauthorized(res, "User not found");
-        // }
-        // if (!user.isActive) {
-        //     return apiResponse.forbidden(res, "Your account has been deactivated");
-        // }
-        // req.user = user;
+        const user = await User.findById(decoded.userId);
 
-        // For now, just attach decoded token to request
-        req.user = decoded;
+        if (!user) {
+            return apiResponse.unauthorized(res, "User not found");
+        }
 
-        logger.info(`User authenticated: ${decoded.email}`);
+        if (!user.isActive) {
+            return apiResponse.forbidden(
+                res,
+                "Your account has been deactivated. Please contact support",
+            );
+        }
+
+        req.user = {
+            userId: user._id,
+            phone: user.phone,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+        };
+
+        logger.info(`User authenticated: ${user.phone}`);
         next();
     } catch (error) {
         logger.error("Auth middleware error:", error.message);
