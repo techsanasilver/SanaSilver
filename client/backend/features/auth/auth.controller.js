@@ -85,7 +85,6 @@ const verifyOTP = async (req, res) => {
                 email: user.email,
                 isNewUser,
             },
-            accessToken,
         });
     } catch (error) {
         logger.error("Verify OTP error:", error.message);
@@ -162,9 +161,7 @@ const refreshToken = async (req, res) => {
 
         logger.info(`Token refreshed for user: ${user._id}`);
 
-        return apiResponse.success(res, "Token refreshed successfully", {
-            accessToken: newAccessToken,
-        });
+        return apiResponse.success(res, "Token refreshed successfully");
     } catch (error) {
         logger.error("Refresh token error:", error.message);
         return apiResponse.serverError(res, "Failed to refresh token");

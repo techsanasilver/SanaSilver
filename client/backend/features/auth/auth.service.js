@@ -64,6 +64,22 @@ const sendOTP = async (phone) => {
 
         logger.info(`OTP request for phone: ${normalizedPhone}`);
 
+        // For test numbers, skip OTP generation and sending
+        if (isTestPhoneNumber(normalizedPhone)) {
+            logger.info(
+                `Test phone number detected - skipping OTP generation: ${normalizedPhone}`,
+            );
+            return {
+                message: "OTP sent successfully",
+                phone: normalizedPhone,
+                // For development only - indicate it's a test number
+                ...(process.env.NODE_ENV !== "production" && {
+                    otp: HARDCODED_OTP,
+                    isTestNumber: true,
+                }),
+            };
+        }
+
         // Check rate limiting: Max 3 OTP requests per 15 minutes
         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
         const recentOTPCount = await OTP.countDocuments({
