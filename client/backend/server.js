@@ -12,6 +12,7 @@ import connectDB from "./shared/config/db.config.js";
 import authRoutes from "./features/auth/auth.routes.js";
 import categoryRoutes from "./features/categories/category.routes.js";
 import productRoutes from "./features/products/product.routes.js";
+import cartRoutes from "./features/cart/cart.routes.js";
 // Add more feature route imports here as you create them
 
 dotenv.config();
@@ -32,6 +33,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+app.use((req, res, next) => {
+    logger.info(`Requesting: ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 // Health check route
 app.get("/health", (req, res) => {
     res.json({
@@ -45,6 +51,7 @@ app.get("/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
 // Add more feature routes here as you create them
 
 // Global error handler (must be last)
