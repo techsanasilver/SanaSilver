@@ -13,6 +13,7 @@ import authRoutes from "./features/auth/auth.routes.js";
 import categoryRoutes from "./features/categories/category.routes.js";
 import productRoutes from "./features/products/product.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
+import wishlistRoutes from "./features/wishlist/wishlist.routes.js";
 // Add more feature route imports here as you create them
 
 dotenv.config();
@@ -52,6 +53,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 // Add more feature routes here as you create them
 
 // Global error handler (must be last)
