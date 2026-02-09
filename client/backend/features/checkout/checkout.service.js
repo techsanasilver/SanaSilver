@@ -4,7 +4,7 @@ import Product from "../products/product.model.js";
 import ProductVariant from "../products/product-variant.model.js";
 import User from "../auth/user.model.js";
 import * as orderService from "../orders/order.service.js";
-import * as pricing from "../../shared/utils/pricing.util.js";
+import * as pricing from "./pricing.util.js";
 import logger from "../../shared/utils/logger.util.js";
 
 // ============================================================================
