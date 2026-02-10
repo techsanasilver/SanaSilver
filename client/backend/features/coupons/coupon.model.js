@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import CouponUsage from "./coupon-usage.model.js";
 
 const couponSchema = new mongoose.Schema(
     {
@@ -176,9 +177,6 @@ couponSchema.statics.findAvailableForUser = async function (userId) {
             { $expr: { $lt: ["$usageCount", "$usageLimit"] } },
         ],
     }).lean();
-
-    // Import CouponUsage dynamically to avoid circular dependency
-    const CouponUsage = (await import("./coupon-usage.model.js")).default;
 
     // Filter out coupons where user has exceeded limit
     const availableCoupons = await Promise.all(

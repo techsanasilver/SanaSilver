@@ -1,6 +1,7 @@
 import Coupon from "./coupon.model.js";
 import CouponUsage from "./coupon-usage.model.js";
 import logger from "../../shared/utils/logger.util.js";
+import Order from "../orders/order.model.js";
 
 /**
  * Create a new coupon
@@ -243,9 +244,6 @@ const getCouponStats = async (couponId) => {
         throw new Error("Coupon not found");
     }
 
-    // Import Order model dynamically to avoid circular dependency
-    const Order = (await import("../orders/order.model.js")).default;
-
     const orderStats = await Order.aggregate([
         { $match: { "appliedCoupon.code": coupon.code } },
         {
@@ -292,9 +290,6 @@ const getCouponUsageHistory = async (couponId, pagination = {}) => {
     if (!coupon) {
         throw new Error("Coupon not found");
     }
-
-    // Import Order model dynamically
-    const Order = (await import("../orders/order.model.js")).default;
 
     const skip = (page - 1) * limit;
 
