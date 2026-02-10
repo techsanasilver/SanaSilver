@@ -254,6 +254,29 @@ const orderSchema = new mongoose.Schema(
             igst: { type: Number, min: 0 },
         },
 
+        // Applied coupon (snapshot at order creation)
+        appliedCoupon: {
+            code: {
+                type: String,
+                uppercase: true,
+            },
+            description: {
+                type: String,
+            },
+            discountType: {
+                type: String,
+                enum: ["percentage", "flat", "free_shipping"],
+            },
+            discountValue: {
+                type: Number,
+                min: 0,
+            },
+            discountAmount: {
+                type: Number,
+                min: 0,
+            },
+        },
+
         // Payment details
         payment: {
             method: {

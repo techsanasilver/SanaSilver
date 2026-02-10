@@ -4,6 +4,7 @@ import Product from "../products/product.model.js";
 import ProductVariant from "../products/product-variant.model.js";
 import User from "../auth/user.model.js";
 import * as orderService from "../orders/order.service.js";
+import * as couponService from "../coupons/coupon.service.js";
 import * as pricing from "./pricing.util.js";
 import logger from "../../shared/utils/logger.util.js";
 
@@ -81,6 +82,7 @@ const initiateCheckout = async (userId, checkoutData) => {
         const { items, pricing, warnings } = await calculateCheckoutPricing(
             cart.items,
             checkoutData.couponCode || null,
+            userId,
         );
 
         // 4. Validate payment method
@@ -147,7 +149,11 @@ const initiateCheckout = async (userId, checkoutData) => {
  * @param {String} couponCode - Optional coupon code (for future coupon support)
  * @returns {Promise<Object>} Items with pricing and summary
  */
-const calculateCheckoutPricing = async (cartItems, couponCode = null) => {
+const calculateCheckoutPricing = async (
+    cartItems,
+    couponCode = null,
+    userId = null,
+) => {
     const items = [];
     const warnings = [];
     let itemsSubtotal = 0;
@@ -224,27 +230,110 @@ const calculateCheckoutPricing = async (cartItems, couponCode = null) => {
     // Calculate cart-level discount (coupon support)
     let cartDiscount = 0;
     let couponInfo = null;
+    let eligibleItems = items;
 
-    // TODO: When coupon system is implemented:
-    // if (couponCode) {
-    //     const coupon = await Coupon.findOne({ code: couponCode, isActive: true });
-    //     if (coupon && validateCouponEligibility(coupon, itemsSubtotal)) {
-    //         cartDiscount = pricing.calculateDiscount(itemsSubtotal, coupon);
-    //         couponInfo = {
-    //             code: coupon.code,
-    //             description: coupon.description,
-    //             discountType: coupon.discountType,
-    //             discountValue: coupon.discountValue,
-    //             discountApplied: cartDiscount
-    //         };
-    //     }
-    // }
+    // Apply coupon if provided
+    if (couponCode) {
+        try {
+            // Validate coupon (coupon-level rules)
+            const validation = await couponService.validateCoupon(
+                couponCode,
+                userId,
+                itemsSubtotal,
+            );
 
-    // Distribute discount proportionally across items
-    const itemsWithDiscount = pricing.distributeDiscountProportionally(
-        items,
-        cartDiscount,
-    );
+            if (validation.valid) {
+                const coupon = validation.coupon;
+
+                // Filter eligible items based on coupon applicability (cart-level rules)
+                eligibleItems = filterEligibleItems(items, coupon);
+
+                if (eligibleItems.length === 0) {
+                    warnings.push({
+                        issue: "No items in your cart are eligible for this coupon",
+                    });
+                } else {
+                    // Calculate eligible subtotal
+                    const eligibleSubtotal = eligibleItems.reduce(
+                        (sum, item) => sum + item.subtotal,
+                        0,
+                    );
+
+                    // Calculate discount based on coupon type
+                    if (coupon.discountType === "percentage") {
+                        cartDiscount =
+                            (eligibleSubtotal * coupon.discountValue) / 100;
+                        if (coupon.maxDiscount) {
+                            cartDiscount = Math.min(
+                                cartDiscount,
+                                coupon.maxDiscount,
+                            );
+                        }
+                    } else if (coupon.discountType === "flat") {
+                        cartDiscount = Math.min(
+                            coupon.discountValue,
+                            eligibleSubtotal,
+                        );
+                    } else if (coupon.discountType === "free_shipping") {
+                        // Shipping discount will be handled separately
+                        cartDiscount = 0;
+                    }
+
+                    // Save coupon info for order
+                    couponInfo = {
+                        code: coupon.code,
+                        description: coupon.description,
+                        discountType: coupon.discountType,
+                        discountValue: coupon.discountValue,
+                        discountApplied: cartDiscount,
+                    };
+                }
+            } else {
+                warnings.push({
+                    issue: `Coupon validation failed: ${validation.error}`,
+                });
+            }
+        } catch (error) {
+            logger.error("Error applying coupon:", error);
+            warnings.push({
+                issue: "Failed to apply coupon",
+            });
+        }
+    }
+
+    // Distribute discount proportionally across eligible items only
+    // First, distribute discount among eligible items
+    const eligibleItemsWithDiscount =
+        cartDiscount > 0
+            ? pricing.distributeDiscountProportionally(
+                  eligibleItems,
+                  cartDiscount,
+              )
+            : eligibleItems.map((item) => ({
+                  ...item,
+                  discount: 0,
+                  discountedSubtotal: item.subtotal,
+              }));
+
+    // Merge back: eligible items get their discount, non-eligible items get 0 discount
+    const itemsWithDiscount = items.map((item) => {
+        const eligibleItem = eligibleItemsWithDiscount.find(
+            (ei) =>
+                ei.product._id.toString() === item.product._id.toString() &&
+                ei.variant._id.toString() === item.variant._id.toString(),
+        );
+
+        if (eligibleItem) {
+            return eligibleItem;
+        }
+
+        // Non-eligible items get no discount
+        return {
+            ...item,
+            discount: 0,
+            discountedSubtotal: item.subtotal,
+        };
+    });
 
     // Calculate GST on discounted amounts
     itemsWithDiscount.forEach((item) => {
@@ -260,8 +349,13 @@ const calculateCheckoutPricing = async (cartItems, couponCode = null) => {
 
     // Calculate cart-level pricing
     const discountedSubtotal = itemsSubtotal - cartDiscount;
-    const shippingCharges =
-        pricing.calculateShippingCharges(discountedSubtotal);
+
+    // Calculate shipping charges (free if coupon provides free shipping)
+    let shippingCharges = pricing.calculateShippingCharges(discountedSubtotal);
+    if (couponInfo && couponInfo.discountType === "free_shipping") {
+        shippingCharges = 0;
+    }
+
     const taxableAmount = discountedSubtotal + shippingCharges;
     const gst = itemsWithDiscount.reduce(
         (sum, item) => sum + item.gstAmount,
@@ -346,13 +440,32 @@ const placeOrderCOD = async (userId, checkoutData) => {
             customerNote: validatedData.customerNote,
         };
 
+        // Add coupon snapshot if applied
+        if (validatedData.pricing.coupon) {
+            orderData.appliedCoupon = {
+                code: validatedData.pricing.coupon.code,
+                description: validatedData.pricing.coupon.description,
+                discountType: validatedData.pricing.coupon.discountType,
+                discountValue: validatedData.pricing.coupon.discountValue,
+                discountAmount: validatedData.pricing.coupon.discountApplied,
+            };
+        }
+
         // 3. Create order
         const order = await orderService.createOrder(orderData, session);
 
-        // 4. Reduce stock
+        // 4. Increment coupon usage if coupon was applied
+        if (validatedData.pricing.coupon) {
+            await couponService.incrementCouponUsage(
+                validatedData.pricing.coupon.code,
+                userId,
+            );
+        }
+
+        // 5. Reduce stock
         await orderService.reduceStock(orderItems, session);
 
-        // 5. Clear cart
+        // 6. Clear cart
         await Cart.findOneAndUpdate({ userId }, { items: [] }, { session });
 
         await session.commitTransaction();
@@ -374,6 +487,51 @@ const placeOrderCOD = async (userId, checkoutData) => {
 // ============================================================================
 // VALIDATION HELPERS
 // ============================================================================
+
+/**
+ * Filter cart items eligible for coupon discount
+ * Applies category, product, and exclusion filters
+ */
+const filterEligibleItems = (items, coupon) => {
+    return items.filter((item) => {
+        const productId = item.product._id.toString();
+
+        // Check if product is explicitly excluded
+        if (
+            coupon.excludedProducts &&
+            coupon.excludedProducts.length > 0 &&
+            coupon.excludedProducts.some((id) => id.toString() === productId)
+        ) {
+            return false;
+        }
+
+        // If specific products are listed, item must be in that list
+        if (coupon.applicableProducts && coupon.applicableProducts.length > 0) {
+            return coupon.applicableProducts.some(
+                (id) => id.toString() === productId,
+            );
+        }
+
+        // If specific categories are listed, item must be in one of those categories
+        if (
+            coupon.applicableCategories &&
+            coupon.applicableCategories.length > 0
+        ) {
+            // Note: This assumes product has category field
+            // May need to populate product.category for this check
+            return (
+                item.product.category &&
+                coupon.applicableCategories.some(
+                    (catId) =>
+                        catId.toString() === item.product.category.toString(),
+                )
+            );
+        }
+
+        // If no restrictions, all items are eligible
+        return true;
+    });
+};
 
 /**
  * Validate COD eligibility
