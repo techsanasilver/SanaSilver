@@ -254,7 +254,7 @@ const checkItemsEligibilityForCoupon = (cartItems, coupon) => {
 };
 
 /**
- * Get coupon by code (for admin or validation)
+ * Get coupon by code (for validation)
  */
 const getCouponByCode = async (couponCode) => {
     return await Coupon.findOne({
@@ -262,114 +262,15 @@ const getCouponByCode = async (couponCode) => {
     });
 };
 
-/**
- * Create a new coupon (admin only)
- */
-const createCoupon = async (couponData) => {
-    const coupon = new Coupon(couponData);
-    await coupon.save();
-    return coupon;
-};
-
-/**
- * Update an existing coupon (admin only)
- */
-const updateCoupon = async (couponId, updates) => {
-    const coupon = await Coupon.findByIdAndUpdate(couponId, updates, {
-        new: true,
-        runValidators: true,
-    });
-
-    if (!coupon) {
-        throw new Error("Coupon not found");
-    }
-
-    return coupon;
-};
-
-/**
- * Delete a coupon (admin only)
- */
-const deleteCoupon = async (couponId) => {
-    const coupon = await Coupon.findByIdAndDelete(couponId);
-
-    if (!coupon) {
-        throw new Error("Coupon not found");
-    }
-
-    return coupon;
-};
-
-/**
- * Get all coupons with optional filters (admin only)
- */
-const getAllCoupons = async (filters = {}) => {
-    const query = {};
-
-    if (filters.isActive !== undefined) {
-        query.isActive = filters.isActive;
-    }
-
-    if (filters.discountType) {
-        query.discountType = filters.discountType;
-    }
-
-    const coupons = await Coupon.find(query)
-        .populate("applicableCategories", "name")
-        .populate("applicableProducts", "productName")
-        .populate("applicableUsers", "name email")
-        .sort({ createdAt: -1 });
-
-    return coupons;
-};
-
-/**
- * Get coupon usage statistics (admin only)
- */
-const getCouponStats = async (couponId) => {
-    const coupon = await Coupon.findById(couponId).populate(
-        "usedBy.user",
-        "name email",
-    );
-
-    if (!coupon) {
-        throw new Error("Coupon not found");
-    }
-
-    const totalRevenue = await Order.aggregate([
-        { $match: { "appliedCoupon.code": coupon.code } },
-        {
-            $group: {
-                _id: null,
-                totalOrders: { $sum: 1 },
-                totalRevenue: { $sum: "$totalAmount" },
-                totalDiscount: { $sum: "$appliedCoupon.discountAmount" },
-            },
-        },
-    ]);
-
-    return {
-        coupon,
-        stats: totalRevenue[0] || {
-            totalOrders: 0,
-            totalRevenue: 0,
-            totalDiscount: 0,
-        },
-    };
-};
+// ============================================================================
+// EXPORTS
+// ============================================================================
 
 export {
-    // Validation & Usage
+    // Customer Validation & Usage
     validateCoupon,
     incrementCouponUsage,
     getAvailableCoupons,
     getAvailableCouponsWithCart,
     getCouponByCode,
-
-    // Admin
-    createCoupon,
-    updateCoupon,
-    deleteCoupon,
-    getAllCoupons,
-    getCouponStats,
 };

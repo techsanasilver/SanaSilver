@@ -14,6 +14,7 @@ import categoryRoutes from "./features/categories/category.routes.js";
 import productRoutes from "./features/products/product.routes.js";
 import bannerRoutes from "./features/banners/banner.routes.js";
 import bulkOperationsRoutes from "./features/bulk-operations/bulk-operation.routes.js";
+import couponRoutes from "./features/coupons/coupon.routes.js";
 // Add more feature route imports here as you create them
 
 dotenv.config();
@@ -26,7 +27,7 @@ app.use(
     cors({
         origin: process.env.CORS_ORIGIN || "http://localhost:5000",
         credentials: true,
-    })
+    }),
 );
 
 // Body parsing middleware
@@ -49,6 +50,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/banners", bannerRoutes);
 app.use("/api/bulk-operations", bulkOperationsRoutes);
+app.use("/api/coupons", couponRoutes);
 // Add more feature routes here as you create them
 
 // Global error handler (must be last)
@@ -60,7 +62,7 @@ connectDB()
         app.listen(PORT, () => {
             logger.info(`Server running on port ${PORT}`);
             logger.info(
-                `Environment: ${process.env.NODE_ENV || "development"}`
+                `Environment: ${process.env.NODE_ENV || "development"}`,
             );
         });
     })
