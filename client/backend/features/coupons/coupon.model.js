@@ -107,24 +107,6 @@ const couponSchema = new mongoose.Schema(
             default: false,
         },
 
-        // Usage Tracking
-        usedBy: [
-            {
-                user: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: "User",
-                },
-                usedCount: {
-                    type: Number,
-                    default: 1,
-                },
-                lastUsedAt: {
-                    type: Date,
-                    default: Date.now,
-                },
-            },
-        ],
-
         // Metadata
         tags: {
             type: [String],
@@ -146,7 +128,6 @@ const couponSchema = new mongoose.Schema(
 // couponSchema.index({ code: 1 });
 couponSchema.index({ isActive: 1 });
 couponSchema.index({ validFrom: 1, validTo: 1 });
-couponSchema.index({ "usedBy.user": 1 });
 
 // ============================================================================
 // VALIDATION
@@ -176,35 +157,12 @@ couponSchema.virtual("isCurrentlyValid").get(function () {
 });
 
 // ============================================================================
-// INSTANCE METHODS
-// ============================================================================
-
-/**
- * Check if user has exceeded their usage limit for this coupon
- */
-couponSchema.methods.hasUserExceededLimit = function (userId) {
-    const userUsage = this.usedBy.find(
-        (usage) => usage.user.toString() === userId.toString(),
-    );
-    return userUsage && userUsage.usedCount >= this.perUserLimit;
-};
-
-/**
- * Get user's usage count for this coupon
- */
-couponSchema.methods.getUserUsageCount = function (userId) {
-    const userUsage = this.usedBy.find(
-        (usage) => usage.user.toString() === userId.toString(),
-    );
-    return userUsage ? userUsage.usedCount : 0;
-};
-
-// ============================================================================
 // STATIC METHODS
 // ============================================================================
 
 /**
  * Find active coupons available for a user
+ * Now checks CouponUsage collection for per-user limits
  */
 couponSchema.statics.findAvailableForUser = async function (userId) {
     const now = new Date();
@@ -219,29 +177,38 @@ couponSchema.statics.findAvailableForUser = async function (userId) {
         ],
     }).lean();
 
+    // Import CouponUsage dynamically to avoid circular dependency
+    const CouponUsage = (await import("./coupon-usage.model.js")).default;
+
     // Filter out coupons where user has exceeded limit
-    return coupons.filter((coupon) => {
-        // Check user-specific restrictions
-        if (
-            coupon.applicableUsers &&
-            coupon.applicableUsers.length > 0 &&
-            !coupon.applicableUsers.some(
-                (id) => id.toString() === userId.toString(),
-            )
-        ) {
-            return false;
-        }
+    const availableCoupons = await Promise.all(
+        coupons.map(async (coupon) => {
+            // Check user-specific restrictions
+            if (
+                coupon.applicableUsers &&
+                coupon.applicableUsers.length > 0 &&
+                !coupon.applicableUsers.some(
+                    (id) => id.toString() === userId.toString(),
+                )
+            ) {
+                return null;
+            }
 
-        // Check user usage limit
-        const userUsage = coupon.usedBy?.find(
-            (usage) => usage.user.toString() === userId.toString(),
-        );
-        if (userUsage && userUsage.usedCount >= coupon.perUserLimit) {
-            return false;
-        }
+            // Check user usage limit using CouponUsage collection
+            const userUsageCount = await CouponUsage.getUserUsageCount(
+                coupon._id,
+                userId,
+            );
+            if (userUsageCount >= coupon.perUserLimit) {
+                return null;
+            }
 
-        return true;
-    });
+            return coupon;
+        }),
+    );
+
+    // Filter out null values (excluded coupons)
+    return availableCoupons.filter((coupon) => coupon !== null);
 };
 
 // ============================================================================

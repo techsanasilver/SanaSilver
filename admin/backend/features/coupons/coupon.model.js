@@ -107,24 +107,6 @@ const couponSchema = new mongoose.Schema(
             default: false,
         },
 
-        // Usage Tracking
-        usedBy: [
-            {
-                user: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: "User",
-                },
-                usedCount: {
-                    type: Number,
-                    default: 1,
-                },
-                lastUsedAt: {
-                    type: Date,
-                    default: Date.now,
-                },
-            },
-        ],
-
         // Metadata
         tags: {
             type: [String],
@@ -157,7 +139,6 @@ const couponSchema = new mongoose.Schema(
 couponSchema.index({ isActive: 1 });
 couponSchema.index({ validFrom: 1, validTo: 1 });
 couponSchema.index({ discountType: 1 });
-couponSchema.index({ "usedBy.user": 1 });
 couponSchema.index({ createdAt: -1 });
 
 // ============================================================================
@@ -186,30 +167,6 @@ couponSchema.virtual("isCurrentlyValid").get(function () {
         (!this.usageLimit || this.usageCount < this.usageLimit)
     );
 });
-
-// ============================================================================
-// INSTANCE METHODS
-// ============================================================================
-
-/**
- * Check if user has exceeded their usage limit for this coupon
- */
-couponSchema.methods.hasUserExceededLimit = function (userId) {
-    const userUsage = this.usedBy.find(
-        (usage) => usage.user.toString() === userId.toString(),
-    );
-    return userUsage && userUsage.usedCount >= this.perUserLimit;
-};
-
-/**
- * Get user's usage count for this coupon
- */
-couponSchema.methods.getUserUsageCount = function (userId) {
-    const userUsage = this.usedBy.find(
-        (usage) => usage.user.toString() === userId.toString(),
-    );
-    return userUsage ? userUsage.usedCount : 0;
-};
 
 // ============================================================================
 // EXPORT MODEL

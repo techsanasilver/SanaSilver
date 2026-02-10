@@ -1,4 +1,5 @@
 import Coupon from "./coupon.model.js";
+import CouponUsage from "./coupon-usage.model.js";
 import logger from "../../shared/utils/logger.util.js";
 
 /**
@@ -263,6 +264,9 @@ const getCouponStats = async (couponId) => {
         totalDiscount: 0,
     };
 
+    // Get unique users count from CouponUsage collection
+    const uniqueUsers = await CouponUsage.getUniqueUserCount(coupon._id);
+
     return {
         coupon: {
             code: coupon.code,
@@ -271,7 +275,7 @@ const getCouponStats = async (couponId) => {
             discountValue: coupon.discountValue,
             usageCount: coupon.usageCount,
             usageLimit: coupon.usageLimit,
-            uniqueUsers: coupon.usedBy.length,
+            uniqueUsers,
         },
         stats,
     };
@@ -343,7 +347,6 @@ const duplicateCoupon = async (couponId, newCode, adminId) => {
         _id: undefined,
         code: newCode.toUpperCase(),
         usageCount: 0,
-        usedBy: [],
         createdBy: adminId,
         createdAt: undefined,
         updatedAt: undefined,

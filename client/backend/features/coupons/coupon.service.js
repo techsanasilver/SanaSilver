@@ -1,4 +1,5 @@
 import Coupon from "./coupon.model.js";
+import CouponUsage from "./coupon-usage.model.js";
 import Order from "../orders/order.model.js";
 import Cart from "../cart/cart.model.js";
 
@@ -53,7 +54,12 @@ const validateCoupon = async (couponCode, userId, orderValue) => {
     }
 
     // Check per-user limit
-    if (coupon.hasUserExceededLimit(userId)) {
+    const hasExceededLimit = await CouponUsage.hasUserExceededLimit(
+        coupon._id,
+        userId,
+        coupon.perUserLimit,
+    );
+    if (hasExceededLimit) {
         return {
             valid: false,
             error: "You have already used this coupon the maximum number of times",
@@ -101,8 +107,15 @@ const validateCoupon = async (couponCode, userId, orderValue) => {
 
 /**
  * Increment usage count for a coupon after successful order
+ * Now records usage in separate CouponUsage collection
  */
-const incrementCouponUsage = async (couponCode, userId) => {
+const incrementCouponUsage = async (
+    couponCode,
+    userId,
+    orderId,
+    discountApplied,
+    orderValue,
+) => {
     const coupon = await Coupon.findOne({
         code: couponCode.toUpperCase(),
     });
@@ -113,26 +126,17 @@ const incrementCouponUsage = async (couponCode, userId) => {
 
     // Increment overall usage count
     coupon.usageCount += 1;
-
-    // Update user-specific usage tracking
-    const userUsageIndex = coupon.usedBy.findIndex(
-        (usage) => usage.user.toString() === userId.toString(),
-    );
-
-    if (userUsageIndex === -1) {
-        // First time user is using this coupon
-        coupon.usedBy.push({
-            user: userId,
-            usedCount: 1,
-            lastUsedAt: new Date(),
-        });
-    } else {
-        // User has used this coupon before
-        coupon.usedBy[userUsageIndex].usedCount += 1;
-        coupon.usedBy[userUsageIndex].lastUsedAt = new Date();
-    }
-
     await coupon.save();
+
+    // Record usage in CouponUsage collection
+    await CouponUsage.recordUsage({
+        couponId: coupon._id,
+        userId,
+        orderId,
+        discountApplied,
+        orderValue,
+    });
+
     return coupon;
 };
 

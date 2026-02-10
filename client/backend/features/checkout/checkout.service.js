@@ -459,6 +459,9 @@ const placeOrderCOD = async (userId, checkoutData) => {
             await couponService.incrementCouponUsage(
                 validatedData.pricing.coupon.code,
                 userId,
+                order._id,
+                validatedData.pricing.coupon.discountApplied,
+                validatedData.pricing.total,
             );
         }
 
