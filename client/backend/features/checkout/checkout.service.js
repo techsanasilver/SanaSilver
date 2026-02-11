@@ -67,7 +67,7 @@ const initiateCheckout = async (userId, checkoutData) => {
         const cart = await Cart.findOne({ userId })
             .populate({
                 path: "items.productId",
-                select: "name images purity makingChargesPerGram gstRate",
+                select: "name images purity makingChargesPerGram gstRate category",
             })
             .populate({
                 path: "items.variantId",
@@ -94,7 +94,7 @@ const initiateCheckout = async (userId, checkoutData) => {
         if (paymentMethod === "cod") {
             const codCheck = await validateCODEligibility(
                 userId,
-                pricing.total,
+                pricing.itemsSubtotal,
             );
             if (!codCheck.allowed) {
                 throw new Error(codCheck.reason);
@@ -461,7 +461,7 @@ const placeOrderCOD = async (userId, checkoutData) => {
                 userId,
                 order._id,
                 validatedData.pricing.coupon.discountApplied,
-                validatedData.pricing.total,
+                validatedData.pricing.itemsSubtotal,
             );
         }
 
@@ -539,12 +539,12 @@ const filterEligibleItems = (items, coupon) => {
 /**
  * Validate COD eligibility
  * @param {String} userId - User ID
- * @param {Number} orderTotal - Order total amount
+ * @param {Number} orderSubtotal - Order subtotal (base amount before shipping/GST)
  * @returns {Promise<Object>} Validation result
  */
-const validateCODEligibility = async (userId, orderTotal) => {
-    // Rule 1: Max order value
-    if (orderTotal > pricing.COD_MAX_ORDER_VALUE) {
+const validateCODEligibility = async (userId, orderSubtotal) => {
+    // Rule 1: Max order value (check on base amount, not final total)
+    if (orderSubtotal > pricing.COD_MAX_ORDER_VALUE) {
         return {
             allowed: false,
             reason: `COD not available for orders above ₹${pricing.COD_MAX_ORDER_VALUE.toLocaleString()}`,
