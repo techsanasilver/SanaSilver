@@ -15,6 +15,7 @@ import productRoutes from "./features/products/product.routes.js";
 import bannerRoutes from "./features/banners/banner.routes.js";
 import bulkOperationsRoutes from "./features/bulk-operations/bulk-operation.routes.js";
 import couponRoutes from "./features/coupons/coupon.routes.js";
+import orderRoutes from "./features/orders/order.routes.js";
 // Add more feature route imports here as you create them
 
 dotenv.config();
@@ -51,6 +52,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/banners", bannerRoutes);
 app.use("/api/bulk-operations", bulkOperationsRoutes);
 app.use("/api/coupons", couponRoutes);
+app.use("/api/orders", orderRoutes);
 // Add more feature routes here as you create them
 
 // Global error handler (must be last)
