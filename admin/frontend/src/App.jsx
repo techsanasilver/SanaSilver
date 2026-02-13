@@ -12,6 +12,8 @@ import EditProduct from "./pages/products/EditProduct";
 import Categories from "./pages/products/Categories";
 import BulkOperations from "./pages/BulkOperations";
 import Banners from "./pages/Banners";
+import Orders from "./pages/Orders";
+import OrderDetail from "./pages/OrderDetail";
 import Unauthorized from "./pages/Unauthorized";
 
 const App = () => {
@@ -45,8 +47,11 @@ const App = () => {
                 <Route path="/products/:id/edit" element={<EditProduct />} />
                 <Route path="/products/categories" element={<Categories />} />
 
+                {/* Orders Routes */}
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/orders/:orderId" element={<OrderDetail />} />
+
                 {/* Other Routes */}
-                <Route path="/orders" element={<div>Orders Page</div>} />
                 <Route path="/customers" element={<div>Customers Page</div>} />
                 <Route path="/banners" element={<Banners />} />
                 <Route path="/bulk-operations" element={<BulkOperations />} />
