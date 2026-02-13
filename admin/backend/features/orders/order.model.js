@@ -53,7 +53,7 @@ const orderItemSchema = new mongoose.Schema(
             min: [0, "Subtotal cannot be negative"],
         },
     },
-    { _id: true }
+    { _id: true },
 );
 
 const addressSchema = new mongoose.Schema(
@@ -90,7 +90,7 @@ const addressSchema = new mongoose.Schema(
             default: "India",
         },
     },
-    { _id: false }
+    { _id: false },
 );
 
 const statusHistorySchema = new mongoose.Schema(
@@ -111,7 +111,7 @@ const statusHistorySchema = new mongoose.Schema(
             ref: "Admin",
         },
     },
-    { _id: true }
+    { _id: true },
 );
 
 const orderSchema = new mongoose.Schema(
@@ -237,11 +237,11 @@ const orderSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    }
+    },
 );
 
 // Indexes for faster queries
-orderSchema.index({ orderNumber: 1 });
+// orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ customer: 1, createdAt: -1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ "payment.status": 1 });
@@ -259,7 +259,7 @@ orderSchema.pre("save", async function (next) {
         });
         this.orderNumber = `ORD-${dateStr}-${String(count + 1).padStart(
             4,
-            "0"
+            "0",
         )}`;
     }
     next();
