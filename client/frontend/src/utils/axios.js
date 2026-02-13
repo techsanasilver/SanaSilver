@@ -1,14 +1,9 @@
-/**
- * Axios Configuration
- * Centralized HTTP client with cookie-based authentication and refresh token handling
- */
-
 import axios from "axios";
 import logger from "./logger.util";
 
 // Base URL from environment variable
 const BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
 
 /**
  * Create axios instance with default config
@@ -37,7 +32,7 @@ axiosInstance.interceptors.request.use(
     (error) => {
         logger.error("Request Interceptor Error:", error);
         return Promise.reject(error);
-    }
+    },
 );
 
 /**
@@ -51,7 +46,7 @@ axiosInstance.interceptors.response.use(
             response.config.method,
             response.config.url,
             response.status,
-            response.data
+            response.data,
         );
 
         return response;
@@ -65,7 +60,7 @@ axiosInstance.interceptors.response.use(
                 error.config.method,
                 error.config.url,
                 error.response.status,
-                error.response.data
+                error.response.data,
             );
         } else {
             logger.error("Network Error:", error);
@@ -85,7 +80,7 @@ axiosInstance.interceptors.response.use(
                 await axios.post(
                     `${BASE_URL}/auth/refresh-token`,
                     {},
-                    { withCredentials: true }
+                    { withCredentials: true },
                 );
 
                 logger.info("Token refreshed successfully");
@@ -110,7 +105,7 @@ axiosInstance.interceptors.response.use(
         }
 
         return Promise.reject(error);
-    }
+    },
 );
 
 /**
