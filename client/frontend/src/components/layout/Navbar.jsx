@@ -1,5 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import {
+    FiSearch,
+    FiHeart,
+    FiShoppingBag,
+    FiUser,
+    FiChevronDown,
+} from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
@@ -13,9 +20,13 @@ const Navbar = () => {
     const { wishlistCount } = useWishlist();
     const [categories, setCategories] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [showSearchBar, setShowSearchBar] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const [activeDropdown, setActiveDropdown] = useState(null);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [expandedSections, setExpandedSections] = useState([]);
     const userMenuRef = useRef(null);
+    const searchRef = useRef(null);
 
     // Fetch categories
     useEffect(() => {
@@ -30,7 +41,7 @@ const Navbar = () => {
         fetchCategories();
     }, []);
 
-    // Close user menu on outside click
+    // Close menus on outside click
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (
@@ -39,22 +50,39 @@ const Navbar = () => {
             ) {
                 setShowUserMenu(false);
             }
+            if (
+                searchRef.current &&
+                !searchRef.current.contains(event.target)
+            ) {
+                setShowSearchBar(false);
+            }
         };
 
-        if (showUserMenu) {
-            document.addEventListener("mousedown", handleClickOutside);
-        }
-
+        document.addEventListener("mousedown", handleClickOutside);
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [showUserMenu]);
+    }, []);
+
+    // Prevent body scroll when mobile menu is open
+    useEffect(() => {
+        if (showMobileMenu) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+            setShowMobileMenu(false);
+        }
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [showMobileMenu]);
 
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchQuery.trim()) {
             navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
             setSearchQuery("");
+            setShowSearchBar(false);
         }
     };
 
@@ -70,280 +98,452 @@ const Navbar = () => {
     const cartItemsCount =
         cart?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
 
-    return (
-        <nav className="sticky top-0 z-50 bg-white shadow-md">
-            {/* Top Bar - Logo, Search, Actions */}
-            <div className="border-b border-neutral-200">
-                <div className="container mx-auto px-4">
-                    <div className="flex items-center justify-between h-16">
-                        {/* Mobile Menu Toggle */}
-                        <button
-                            onClick={() => setShowMobileMenu(!showMobileMenu)}
-                            className="lg:hidden p-2 text-neutral-600 hover:text-primary"
-                            aria-label="Toggle mobile menu"
-                        >
-                            <svg
-                                className="w-6 h-6"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 6h16M4 12h16M4 18h16"
-                                />
-                            </svg>
-                        </button>
+    // Dropdown menu items
+    const shopMenu = {
+        title: "SHOP",
+        items: categories.map((cat) => ({
+            label: cat.name,
+            link: `/shop?category=${cat.slug}`,
+        })),
+    };
 
-                        {/* Logo */}
-                        <Link to="/" className="flex items-center">
-                            <span className="text-2xl font-bold text-primary">
-                                Sana Silver
-                            </span>
-                        </Link>
+    const infoMenu = {
+        title: "INFO",
+        items: [
+            { label: "About Us", link: "/about" },
+            { label: "Contact", link: "/contact" },
+            { label: "FAQs", link: "/faqs" },
+            { label: "Shipping & Returns", link: "/shipping" },
+        ],
+    };
 
-                        {/* Search Bar - Desktop */}
-                        <form
-                            onSubmit={handleSearch}
-                            className="hidden md:flex flex-1 max-w-xl mx-8"
-                        >
-                            <div className="relative w-full">
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) =>
-                                        setSearchQuery(e.target.value)
-                                    }
-                                    placeholder="Search for silver jewelry..."
-                                    className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:outline-none focus:border-primary"
-                                />
-                                <button
-                                    type="submit"
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-neutral-500 hover:text-primary"
-                                >
-                                    <svg
-                                        className="w-5 h-5"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-                        </form>
+    const quickLinksMenu = {
+        title: "QUICK LINKS",
+        items: [
+            { label: "My Orders", link: "/orders" },
+            { label: "My Wishlist", link: "/wishlist" },
+            { label: "My Profile", link: "/profile" },
+            { label: "Track Order", link: "/track-order" },
+        ],
+    };
 
-                        {/* Actions - Wishlist, Cart, User */}
-                        <div className="flex items-center space-x-4">
-                            {/* Wishlist */}
+    const toggleSection = (section) => {
+        setExpandedSections((prev) =>
+            prev.includes(section)
+                ? prev.filter((s) => s !== section)
+                : [...prev, section],
+        );
+    };
+
+    const renderMobileSection = (menu) => {
+        const isExpanded = expandedSections.includes(menu.title);
+
+        return (
+            <div key={menu.title} className="border-b border-divider">
+                <button
+                    onClick={() => toggleSection(menu.title)}
+                    className="w-full flex items-center justify-between px-6 py-4 text-left"
+                >
+                    <span className="text-sm font-medium text-text-primary uppercase tracking-wide">
+                        {menu.title}
+                    </span>
+                    <FiChevronDown
+                        className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${
+                            isExpanded ? "rotate-180" : ""
+                        }`}
+                    />
+                </button>
+                {isExpanded && (
+                    <div className="px-6 pb-4 space-y-2">
+                        {menu.items.map((item, index) => (
                             <Link
-                                to="/wishlist"
-                                className="relative p-2 text-neutral-600 hover:text-primary transition-colors"
-                                aria-label="Wishlist"
+                                key={index}
+                                to={item.link}
+                                className="block py-2 text-sm text-text-secondary hover:text-accent-2"
+                                onClick={() => {
+                                    setShowMobileMenu(false);
+                                    setExpandedSections([]);
+                                }}
                             >
-                                <svg
-                                    className="w-6 h-6"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                    />
-                                </svg>
-                                {wishlistCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                                        {wishlistCount}
-                                    </span>
-                                )}
-                            </Link>
-
-                            {/* Cart */}
-                            <Link
-                                to="/cart"
-                                className="relative p-2 text-neutral-600 hover:text-primary transition-colors"
-                                aria-label="Shopping Cart"
-                            >
-                                <svg
-                                    className="w-6 h-6"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                                    />
-                                </svg>
-                                {cartItemsCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                                        {cartItemsCount}
-                                    </span>
-                                )}
-                            </Link>
-
-                            {/* User Menu */}
-                            {user ? (
-                                <div className="relative" ref={userMenuRef}>
-                                    <button
-                                        onClick={() =>
-                                            setShowUserMenu(!showUserMenu)
-                                        }
-                                        className="flex items-center space-x-2 p-2 text-neutral-600 hover:text-primary transition-colors"
-                                    >
-                                        <svg
-                                            className="w-6 h-6"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                            />
-                                        </svg>
-                                        <span className="hidden md:inline text-sm font-medium">
-                                            {user.name || user.phone}
-                                        </span>
-                                    </button>
-
-                                    {showUserMenu && (
-                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-neutral-200">
-                                            <Link
-                                                to="/profile"
-                                                className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-                                                onClick={() =>
-                                                    setShowUserMenu(false)
-                                                }
-                                            >
-                                                My Profile
-                                            </Link>
-                                            <Link
-                                                to="/orders"
-                                                className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-                                                onClick={() =>
-                                                    setShowUserMenu(false)
-                                                }
-                                            >
-                                                My Orders
-                                            </Link>
-                                            <button
-                                                onClick={handleLogout}
-                                                className="block w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-                                            >
-                                                Logout
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <Link
-                                    to="/login"
-                                    className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
-                                >
-                                    Login
-                                </Link>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Search Bar - Mobile */}
-                    <form onSubmit={handleSearch} className="md:hidden pb-3">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search jewelry..."
-                                className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:outline-none focus:border-primary"
-                            />
-                            <button
-                                type="submit"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-neutral-500 hover:text-primary"
-                            >
-                                <svg
-                                    className="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            {/* Category Navigation - Desktop */}
-            <div className="hidden lg:block bg-neutral-50 border-b border-neutral-200">
-                <div className="container mx-auto px-4">
-                    <div className="flex items-center space-x-8 h-12 overflow-x-auto">
-                        <Link
-                            to="/shop"
-                            className="text-sm font-medium text-neutral-700 hover:text-primary whitespace-nowrap transition-colors"
-                        >
-                            All Products
-                        </Link>
-                        {categories.map((category) => (
-                            <Link
-                                key={category._id}
-                                to={`/shop?category=${category.slug}`}
-                                className="text-sm font-medium text-neutral-700 hover:text-primary whitespace-nowrap transition-colors"
-                            >
-                                {category.name}
+                                {item.label}
                             </Link>
                         ))}
                     </div>
-                </div>
+                )}
             </div>
+        );
+    };
 
-            {/* Mobile Menu */}
-            {showMobileMenu && (
-                <div className="lg:hidden border-t border-neutral-200">
-                    <div className="container mx-auto px-4 py-4">
-                        <div className="flex flex-col space-y-2">
-                            <Link
-                                to="/shop"
-                                className="py-2 px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100 rounded transition-colors"
-                                onClick={() => setShowMobileMenu(false)}
-                            >
-                                All Products
-                            </Link>
-                            {categories.map((category) => (
+    const renderDropdownMenu = (menu) => {
+        const isActive = activeDropdown === menu.title;
+
+        return (
+            <div
+                className="relative group"
+                onMouseEnter={() => setActiveDropdown(menu.title)}
+                onMouseLeave={() => setActiveDropdown(null)}
+            >
+                <button className="px-4 py-2 text-sm font-medium text-text-primary hover:text-accent-2 transition-colors uppercase tracking-wider flex items-center gap-1">
+                    {menu.title}
+                    <FiChevronDown
+                        className={`w-3 h-3 transition-transform duration-200 ${isActive ? "rotate-180" : ""}`}
+                    />
+                </button>
+
+                {isActive && menu.items.length > 0 && (
+                    <div className="absolute left-0 top-full mt-0 w-48 bg-background-primary border border-divider rounded-sm shadow-lg overflow-hidden z-50">
+                        <div className="py-2">
+                            {menu.items.map((item, index) => (
                                 <Link
-                                    key={category._id}
-                                    to={`/shop?category=${category.slug}`}
-                                    className="py-2 px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100 rounded transition-colors"
-                                    onClick={() => setShowMobileMenu(false)}
+                                    key={index}
+                                    to={item.link}
+                                    className="block px-4 py-2.5 text-sm text-text-secondary hover:bg-background-secondary hover:text-text-primary"
+                                    onClick={() => setActiveDropdown(null)}
                                 >
-                                    {category.name}
+                                    {item.label}
                                 </Link>
                             ))}
                         </div>
                     </div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <>
+            <nav className="sticky top-0 z-50 bg-background-primary border-b border-divider">
+                {/* Desktop Navigation */}
+                <div className="hidden lg:block">
+                    <div className="container mx-auto px-6">
+                        <div className="flex items-center justify-between h-16">
+                            {/* Left: Logo */}
+                            <div className="shrink-0">
+                                <Link to="/" className="flex items-center">
+                                    <span className="text-2xl font-light tracking-widest text-text-primary">
+                                        SANA
+                                    </span>
+                                </Link>
+                            </div>
+
+                            {/* Center: Menus */}
+                            <div className="flex items-center space-x-2">
+                                {renderDropdownMenu(shopMenu)}
+                                {renderDropdownMenu(infoMenu)}
+                                {renderDropdownMenu(quickLinksMenu)}
+                            </div>
+
+                            {/* Right: Icons */}
+                            <div className="flex items-center space-x-1">
+                                {/* Search */}
+                                <div className="relative" ref={searchRef}>
+                                    {showSearchBar ? (
+                                        <form
+                                            onSubmit={handleSearch}
+                                            className="flex items-center"
+                                        >
+                                            <input
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={(e) =>
+                                                    setSearchQuery(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="Search..."
+                                                className="w-64 px-4 py-1.5 pr-10 border border-neutral-300 rounded-sm focus:outline-none focus:border-neutral-400 text-sm"
+                                                autoFocus
+                                            />
+                                            <button
+                                                type="submit"
+                                                className="absolute right-2 p-1.5 text-text-secondary hover:text-text-primary"
+                                            >
+                                                <FiSearch className="w-4 h-4" />
+                                            </button>
+                                        </form>
+                                    ) : (
+                                        <button
+                                            onClick={() =>
+                                                setShowSearchBar(true)
+                                            }
+                                            className="p-2.5 text-text-secondary hover:text-accent-2 transition-colors"
+                                            aria-label="Search"
+                                        >
+                                            <FiSearch className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Wishlist */}
+                                <Link
+                                    to="/wishlist"
+                                    className="relative p-2.5 text-text-secondary hover:text-accent-2 transition-colors"
+                                    aria-label="Wishlist"
+                                >
+                                    <FiHeart className="w-5 h-5" />
+                                    {wishlistCount > 0 && (
+                                        <span className="absolute top-0 right-0 bg-accent-2 text-text-primary-invert text-xs font-medium rounded-full w-4 h-4 flex items-center justify-center">
+                                            {wishlistCount}
+                                        </span>
+                                    )}
+                                </Link>
+
+                                {/* Cart */}
+                                <Link
+                                    to="/cart"
+                                    className="relative p-2.5 text-text-secondary hover:text-accent-2 transition-colors"
+                                    aria-label="Shopping Cart"
+                                >
+                                    <FiShoppingBag className="w-5 h-5" />
+                                    {cartItemsCount > 0 && (
+                                        <span className="absolute top-0 right-0 bg-accent-2 text-text-primary-invert text-xs font-medium rounded-full w-4 h-4 flex items-center justify-center">
+                                            {cartItemsCount}
+                                        </span>
+                                    )}
+                                </Link>
+
+                                {/* User */}
+                                <div className="relative" ref={userMenuRef}>
+                                    {user ? (
+                                        <>
+                                            <button
+                                                onClick={() =>
+                                                    setShowUserMenu(
+                                                        !showUserMenu,
+                                                    )
+                                                }
+                                                className="p-2.5 text-text-secondary hover:text-accent-2 transition-colors"
+                                                aria-label="User menu"
+                                            >
+                                                <FiUser className="w-5 h-5" />
+                                            </button>
+
+                                            {showUserMenu && (
+                                                <div className="absolute right-0 mt-2 w-48 bg-background-primary border border-divider rounded-lg shadow-lg overflow-hidden">
+                                                    <div className="py-2">
+                                                        <Link
+                                                            to="/profile"
+                                                            className="block px-4 py-2.5 text-sm text-text-secondary hover:bg-background-secondary hover:text-text-primary"
+                                                            onClick={() =>
+                                                                setShowUserMenu(
+                                                                    false,
+                                                                )
+                                                            }
+                                                        >
+                                                            My Profile
+                                                        </Link>
+                                                        <Link
+                                                            to="/orders"
+                                                            className="block px-4 py-2.5 text-sm text-text-secondary hover:bg-background-secondary hover:text-text-primary"
+                                                            onClick={() =>
+                                                                setShowUserMenu(
+                                                                    false,
+                                                                )
+                                                            }
+                                                        >
+                                                            My Orders
+                                                        </Link>
+                                                        <hr className="my-1 border-divider" />
+                                                        <button
+                                                            onClick={
+                                                                handleLogout
+                                                            }
+                                                            className="block w-full text-left px-4 py-2.5 text-sm text-text-secondary hover:bg-background-secondary hover:text-text-primary"
+                                                        >
+                                                            Logout
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <Link
+                                            to="/login"
+                                            className="p-2.5 text-text-secondary hover:text-accent-2 transition-colors"
+                                            aria-label="Login"
+                                        >
+                                            <FiUser className="w-5 h-5" />
+                                        </Link>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            )}
-        </nav>
+
+                {/* Mobile Navigation */}
+                <div className="lg:hidden">
+                    <div className="container mx-auto px-4">
+                        <div className="flex items-center justify-between h-16">
+                            {/* Left: Hamburger Menu */}
+                            <button
+                                onClick={() =>
+                                    setShowMobileMenu(!showMobileMenu)
+                                }
+                                className="p-2 text-text-primary"
+                                aria-label="Toggle menu"
+                            >
+                                <div className="w-6 h-5 flex flex-col justify-between">
+                                    <span
+                                        className={`block h-0.5 w-full bg-current transform transition-all duration-300 origin-center ${
+                                            showMobileMenu
+                                                ? "rotate-45 translate-y-2.25"
+                                                : ""
+                                        }`}
+                                    />
+                                    <span
+                                        className={`block h-0.5 w-full bg-current transition-all duration-300 ${
+                                            showMobileMenu ? "opacity-0" : ""
+                                        }`}
+                                    />
+                                    <span
+                                        className={`block h-0.5 w-full bg-current transform transition-all duration-300 origin-center ${
+                                            showMobileMenu
+                                                ? "-rotate-45 -translate-y-2.25"
+                                                : ""
+                                        }`}
+                                    />
+                                </div>
+                            </button>
+
+                            {/* Center: Logo */}
+                            <Link
+                                to="/"
+                                className="absolute left-1/2 -translate-x-1/2"
+                            >
+                                <span className="text-xl font-light tracking-widest text-text-primary">
+                                    SANA
+                                </span>
+                            </Link>
+
+                            {/* Right: Icons */}
+                            <div className="flex items-center space-x-1">
+                                {/* Search */}
+                                <button
+                                    onClick={() =>
+                                        setShowSearchBar(!showSearchBar)
+                                    }
+                                    className="p-2 text-text-secondary"
+                                    aria-label="Search"
+                                >
+                                    <FiSearch className="w-5 h-5" />
+                                </button>
+
+                                {/* Wishlist */}
+                                <Link
+                                    to="/wishlist"
+                                    className="relative p-2 text-text-secondary"
+                                    aria-label="Wishlist"
+                                >
+                                    <FiHeart className="w-5 h-5" />
+                                    {wishlistCount > 0 && (
+                                        <span className="absolute top-0 right-0 bg-accent-2 text-text-primary-invert text-xs font-medium rounded-full w-4 h-4 flex items-center justify-center">
+                                            {wishlistCount}
+                                        </span>
+                                    )}
+                                </Link>
+
+                                {/* Cart */}
+                                <Link
+                                    to="/cart"
+                                    className="relative p-2 text-text-secondary"
+                                    aria-label="Shopping Cart"
+                                >
+                                    <FiShoppingBag className="w-5 h-5" />
+                                    {cartItemsCount > 0 && (
+                                        <span className="absolute top-0 right-0 bg-accent-2 text-text-primary-invert text-xs font-medium rounded-full w-4 h-4 flex items-center justify-center">
+                                            {cartItemsCount}
+                                        </span>
+                                    )}
+                                </Link>
+                            </div>
+                        </div>
+
+                        {/* Mobile Search Bar */}
+                        {showSearchBar && (
+                            <div className="pb-3">
+                                <form onSubmit={handleSearch}>
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) =>
+                                            setSearchQuery(e.target.value)
+                                        }
+                                        placeholder="Search..."
+                                        className="w-full px-4 py-2 border border-neutral-300 rounded-full focus:outline-none focus:border-neutral-400 text-sm"
+                                        autoFocus
+                                    />
+                                </form>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </nav>
+
+            {/* Mobile Menu Overlay */}
+            <div
+                className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${
+                    showMobileMenu
+                        ? "opacity-100"
+                        : "opacity-0 pointer-events-none"
+                }`}
+            >
+                {/* Backdrop */}
+                <div
+                    className="absolute inset-0 bg-opacity-50 z-10"
+                    onClick={() => setShowMobileMenu(false)}
+                />
+
+                {/* Menu Sidebar */}
+                <div
+                    className={`absolute left-0 top-0 h-full w-full bg-background-primary shadow-xl transform transition-transform duration-300 ease-out z-20 ${
+                        showMobileMenu ? "translate-x-0" : "-translate-x-full"
+                    }`}
+                >
+                    <div className="flex flex-col h-full pt-16">
+                        {/* Menu Content */}
+                        <div className="flex-1 overflow-y-auto">
+                            {renderMobileSection(shopMenu)}
+                            {renderMobileSection(infoMenu)}
+                            {renderMobileSection(quickLinksMenu)}
+                        </div>
+
+                        {/* Login/Signup Button */}
+                        <div className="p-6 border-t border-divider bg-background-primary">
+                            {user ? (
+                                <div className="space-y-2">
+                                    <Link
+                                        to="/profile"
+                                        onClick={() => setShowMobileMenu(false)}
+                                        className="block w-full py-3 text-center text-sm font-medium text-text-primary bg-background-primary border border-divider rounded-lg"
+                                    >
+                                        My Profile
+                                    </Link>
+                                    <button
+                                        onClick={() => {
+                                            handleLogout();
+                                            setShowMobileMenu(false);
+                                        }}
+                                        className="block w-full py-3 text-center text-sm font-medium text-text-primary-invert bg-accent-2 rounded-lg"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            ) : (
+                                <Link
+                                    to="/login"
+                                    onClick={() => setShowMobileMenu(false)}
+                                    className="flex items-center justify-center w-full py-3 text-sm font-medium text-text-primary-invert bg-background-invert hover:bg-background-invert/80 rounded-sm transition-colors"
+                                >
+                                    <FiUser className="w-4 h-4 mr-2" />
+                                    Login/Signup
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </>
     );
 };
 

@@ -9,17 +9,17 @@ import { WishlistProvider } from "./context/WishlistContext";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 
 createRoot(document.getElementById("root")).render(
-    <StrictMode>
-        <ErrorBoundary>
-            <BrowserRouter>
-                <AuthProvider>
-                    <CartProvider>
-                        <WishlistProvider>
-                            <App />
-                        </WishlistProvider>
-                    </CartProvider>
-                </AuthProvider>
-            </BrowserRouter>
-        </ErrorBoundary>
-    </StrictMode>,
+    // <StrictMode>
+    <ErrorBoundary>
+        <BrowserRouter>
+            <AuthProvider>
+                <CartProvider>
+                    <WishlistProvider>
+                        <App />
+                    </WishlistProvider>
+                </CartProvider>
+            </AuthProvider>
+        </BrowserRouter>
+    </ErrorBoundary>,
+    // </StrictMode>,
 );
