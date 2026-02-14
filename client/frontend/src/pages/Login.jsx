@@ -1,31 +1,36 @@
-/**
- * Login Page
- * Phone + OTP authentication (handles both login and registration)
- */
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { sendOTP, verifyOTP } from "../api/auth.api";
 import logger from "../utils/logger.util";
+import Loader from "../components/common/Loader";
 
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login } = useAuth();
+    const { login, isAuthenticated, isLoading } = useAuth();
 
-    const [step, setStep] = useState(1); // 1 = phone, 2 = OTP, 3 = new user details
+    const [step, setStep] = useState(1); // 1 = phone, 2 = OTP
     const [phone, setPhone] = useState("");
     const [otp, setOtp] = useState("");
-    const [isNewUser, setIsNewUser] = useState(false);
-    const [userData, setUserData] = useState({ name: "", email: "" });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [devOTP, setDevOTP] = useState(""); // For displaying OTP in development
 
     const from = location.state?.from?.pathname || "/";
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            logger.info("User already authenticated, redirecting to home");
+            navigate(from, { replace: true });
+        }
+    }, [isLoading, isAuthenticated, navigate, from]);
 
     const handleSendOTP = async (e) => {
         e.preventDefault();
         setError("");
+        setDevOTP("");
 
         if (phone.length !== 10) {
             setError("Please enter a valid 10-digit phone number");
@@ -35,15 +40,20 @@ const Login = () => {
         setLoading(true);
 
         try {
-            // Call sendOTP API
-            logger.info("Sending OTP", { phone });
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const response = await sendOTP(`+91${phone}`);
+
+            // Show OTP in development
+            if (response.data?.data?.otp) {
+                setDevOTP(response.data.data.otp);
+            }
 
             setStep(2);
             logger.info("OTP sent successfully");
         } catch (err) {
-            setError(err.response?.data?.message || "Failed to send OTP");
+            const errorMsg =
+                err.response?.data?.message ||
+                "Failed to send OTP. Please try again.";
+            setError(errorMsg);
             logger.error("Send OTP failed:", err);
         } finally {
             setLoading(false);
@@ -62,50 +72,27 @@ const Login = () => {
         setLoading(true);
 
         try {
-            // Check if it's a new user (you'd get this from backend)
-            const mockIsNewUser = Math.random() > 0.5;
+            const response = await verifyOTP(`+91${phone}`, otp);
+            const { user } = response.data?.data || {};
 
-            if (mockIsNewUser) {
-                setIsNewUser(true);
-                setStep(3);
-                logger.info("New user detected, requesting additional details");
-            } else {
-                // Existing user - login directly
-                await login(phone, otp);
-                logger.info("Login successful");
-                navigate(from, { replace: true });
-            }
+            // Login successful (works for both new and existing users)
+            login(user);
+            logger.info("Login successful");
+            navigate(from, { replace: true });
         } catch (err) {
-            setError(err.response?.data?.message || "Invalid OTP");
+            const errorMsg =
+                err.response?.data?.message || "Invalid OTP. Please try again.";
+            setError(errorMsg);
             logger.error("Verify OTP failed:", err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleRegister = async (e) => {
-        e.preventDefault();
-        setError("");
-
-        if (!userData.name.trim()) {
-            setError("Please enter your name");
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            // Register with additional details
-            await login(phone, otp, userData);
-            logger.info("Registration successful");
-            navigate(from, { replace: true });
-        } catch (err) {
-            setError(err.response?.data?.message || "Registration failed");
-            logger.error("Registration failed:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Show loading state while checking authentication
+    if (isLoading) {
+        return <Loader />;
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-primary px-4">
@@ -123,7 +110,6 @@ const Login = () => {
                             {step === 1 &&
                                 "Welcome! Login or create an account"}
                             {step === 2 && "Enter the OTP sent to your phone"}
-                            {step === 3 && "Complete your profile"}
                         </p>
                     </div>
 
@@ -175,6 +161,21 @@ const Login = () => {
                     {/* Step 2: OTP Verification */}
                     {step === 2 && (
                         <form onSubmit={handleVerifyOTP}>
+                            {/* Development OTP Display */}
+                            {devOTP && (
+                                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+                                    <p className="text-yellow-800 font-medium">
+                                        Development Mode
+                                    </p>
+                                    <p className="text-yellow-700">
+                                        OTP:{" "}
+                                        <span className="font-mono font-bold">
+                                            {devOTP}
+                                        </span>
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="mb-4">
                                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                                     Enter OTP
@@ -212,58 +213,6 @@ const Login = () => {
                                 className="w-full text-sm text-primary hover:underline"
                             >
                                 Change phone number
-                            </button>
-                        </form>
-                    )}
-
-                    {/* Step 3: New User Details */}
-                    {step === 3 && (
-                        <form onSubmit={handleRegister}>
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                    Full Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={userData.name}
-                                    onChange={(e) =>
-                                        setUserData({
-                                            ...userData,
-                                            name: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Enter your full name"
-                                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:border-primary"
-                                    required
-                                />
-                            </div>
-
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                    Email (Optional)
-                                </label>
-                                <input
-                                    type="email"
-                                    value={userData.email}
-                                    onChange={(e) =>
-                                        setUserData({
-                                            ...userData,
-                                            email: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Enter your email"
-                                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:border-primary"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={loading || !userData.name.trim()}
-                                className="w-full px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark disabled:bg-neutral-300 disabled:cursor-not-allowed"
-                            >
-                                {loading
-                                    ? "Creating Account..."
-                                    : "Complete Registration"}
                             </button>
                         </form>
                     )}

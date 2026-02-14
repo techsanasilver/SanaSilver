@@ -67,11 +67,14 @@ axiosInstance.interceptors.response.use(
         }
 
         // Handle 401 Unauthorized - Token Expired
-        // Don't try to refresh on login endpoint (wrong credentials scenario)
+        // Don't try to refresh on auth endpoints or if already retried
         if (
             error.response?.status === 401 &&
             !originalRequest._retry &&
-            !originalRequest.url?.includes("/auth/login")
+            !originalRequest.url?.includes("/auth/login") &&
+            !originalRequest.url?.includes("/auth/refresh-token") &&
+            !originalRequest.url?.includes("/auth/send-otp") &&
+            !originalRequest.url?.includes("/auth/verify-otp")
         ) {
             originalRequest._retry = true;
 
@@ -88,7 +91,7 @@ axiosInstance.interceptors.response.use(
                 // Retry original request (new accessToken cookie set by server)
                 return axiosInstance(originalRequest);
             } catch (refreshError) {
-                // Refresh failed - redirect to login
+                // Refresh failed - clear auth state
                 logger.error("Token refresh failed:", refreshError);
 
                 // Clear user data from localStorage
@@ -97,8 +100,8 @@ axiosInstance.interceptors.response.use(
                 // Dispatch custom event for AuthContext to handle
                 window.dispatchEvent(new Event("auth:logout"));
 
-                // Redirect to login
-                window.location.href = "/login";
+                // Don't redirect here - let ProtectedRoute components handle redirect
+                // This allows public pages to stay accessible
 
                 return Promise.reject(refreshError);
             }

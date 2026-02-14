@@ -1,7 +1,7 @@
 import axiosInstance from "../utils/axios";
 import logger from "../utils/logger.util";
 
-const API_PREFIX = "/client/auth";
+const API_PREFIX = "/auth";
 
 /**
  * Send OTP to phone number

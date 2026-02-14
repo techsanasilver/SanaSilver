@@ -417,7 +417,8 @@ const Navbar = () => {
                             </Link>
 
                             {/* Right: Icons */}
-                            <div className="flex items-center space-x-1">
+                            {/* <div className="flex items-center space-x-1"> */}
+                            <div className="flex items-center">
                                 {/* Search */}
                                 <button
                                     onClick={() =>
@@ -470,7 +471,7 @@ const Navbar = () => {
                                             setSearchQuery(e.target.value)
                                         }
                                         placeholder="Search..."
-                                        className="w-full px-4 py-2 border border-neutral-300 rounded-full focus:outline-none focus:border-neutral-400 text-sm"
+                                        className="w-full px-4 py-2 border border-neutral-300 rounded-sm focus:outline-none focus:border-neutral-400 text-sm"
                                         autoFocus
                                     />
                                 </form>
@@ -490,7 +491,7 @@ const Navbar = () => {
             >
                 {/* Backdrop */}
                 <div
-                    className="absolute inset-0 bg-opacity-50 z-10"
+                    className="absolute bg-black/50 backdrop-blur-lg inset-0 z-10"
                     onClick={() => setShowMobileMenu(false)}
                 />
 

@@ -41,19 +41,51 @@ const verifyRefreshToken = (token) => {
 };
 
 const getAccessTokenCookieOptions = () => {
+    // Get sameSite from env or default based on NODE_ENV
+    const sameSite =
+        process.env.COOKIE_SAME_SITE ||
+        (process.env.NODE_ENV === "production" ? "strict" : "lax");
+
+    // Get secure from env or auto-detect based on NODE_ENV
+    let secure;
+    if (process.env.COOKIE_SECURE === "true") {
+        secure = true;
+    } else if (process.env.COOKIE_SECURE === "false") {
+        secure = false;
+    } else {
+        // Auto: secure in production, not secure in development
+        secure = process.env.NODE_ENV === "production";
+    }
+
     return {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        secure: secure,
+        sameSite: sameSite,
         maxAge: 15 * 60 * 1000, // 15 minutes
     };
 };
 
 const getRefreshTokenCookieOptions = () => {
+    // Get sameSite from env or default based on NODE_ENV
+    const sameSite =
+        process.env.COOKIE_SAME_SITE ||
+        (process.env.NODE_ENV === "production" ? "strict" : "lax");
+
+    // Get secure from env or auto-detect based on NODE_ENV
+    let secure;
+    if (process.env.COOKIE_SECURE === "true") {
+        secure = true;
+    } else if (process.env.COOKIE_SECURE === "false") {
+        secure = false;
+    } else {
+        // Auto: secure in production, not secure in development
+        secure = process.env.NODE_ENV === "production";
+    }
+
     return {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        secure: secure,
+        sameSite: sameSite,
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     };
 };

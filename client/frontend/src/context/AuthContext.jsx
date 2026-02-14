@@ -1,11 +1,5 @@
-/**
- * Authentication Context
- * Global state management for user authentication
- * Uses phone number + OTP authentication with httpOnly cookies
- */
-
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { getProfile } from "../api/auth.api";
+import { getProfile, logout as logoutAPI } from "../api/auth.api";
 import logger from "../utils/logger.util";
 
 const AuthContext = createContext(null);
@@ -25,20 +19,18 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Initialize auth state by checking with backend
-     * Tokens are in httpOnly cookies, so we verify by calling /client/auth/me
+     * Tokens are in httpOnly cookies, so we verify by calling /auth/profile
      */
     useEffect(() => {
         const initializeAuth = async () => {
             try {
-                // Try to get stored user data
-                const storedUser = localStorage.getItem("user");
+                // Always check backend for valid cookies (source of truth)
+                // localStorage is just for optimization
+                try {
+                    const response = await getProfile();
+                    const userData = response.data?.data?.user;
 
-                if (storedUser) {
-                    // Verify with backend (cookies sent automatically)
-                    try {
-                        const response = await getProfile();
-                        const userData = response.data;
-
+                    if (userData) {
                         setUser(userData);
                         setIsAuthenticated(true);
                         localStorage.setItem("user", JSON.stringify(userData));
@@ -46,13 +38,18 @@ export const AuthProvider = ({ children }) => {
                         logger.info("User session restored", {
                             userId: userData._id,
                         });
-                    } catch (error) {
-                        // Token invalid or expired, clear data
-                        logger.warn("Session validation failed:", error);
-                        localStorage.removeItem("user");
+                    } else {
+                        // No user data in response
                         setUser(null);
                         setIsAuthenticated(false);
+                        localStorage.removeItem("user");
                     }
+                } catch (error) {
+                    // Token invalid or expired, clear data
+                    logger.warn("Session validation failed:", error);
+                    localStorage.removeItem("user");
+                    setUser(null);
+                    setIsAuthenticated(false);
                 }
             } catch (error) {
                 logger.error("Failed to initialize auth:", error);
@@ -103,36 +100,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     /**
-     * Register handler (after OTP verification)
-     * Tokens are set as httpOnly cookies by backend
-     */
-    const register = (userData) => {
-        try {
-            // Store user data
-            setUser(userData);
-            setIsAuthenticated(true);
-
-            // Store in localStorage for quick access
-            localStorage.setItem("user", JSON.stringify(userData));
-
-            logger.info("User registered successfully", {
-                userId: userData._id,
-                phone: userData.phone,
-            });
-
-            return true;
-        } catch (error) {
-            logger.error("Register handler failed:", error);
-            return false;
-        }
-    };
-
-    /**
      * Logout handler
-     * Clear frontend state (backend will clear cookies)
+     * Calls backend to clear httpOnly cookies, then clears frontend state
      */
-    const logout = () => {
+    const logout = async () => {
         try {
+            // Call backend to clear cookies
+            await logoutAPI();
+
             // Clear state
             setUser(null);
             setIsAuthenticated(false);
@@ -144,7 +119,16 @@ export const AuthProvider = ({ children }) => {
 
             return true;
         } catch (error) {
-            logger.error("Logout handler failed:", error);
+            // Even if API call fails, clear frontend state
+            logger.error(
+                "Logout API failed, clearing frontend state anyway:",
+                error,
+            );
+
+            setUser(null);
+            setIsAuthenticated(false);
+            localStorage.removeItem("user");
+
             return false;
         }
     };
@@ -174,7 +158,6 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         isLoading,
         login,
-        register,
         logout,
         updateUser,
     };
