@@ -319,7 +319,7 @@ const Navbar = () => {
                                             </button>
 
                                             {showUserMenu && (
-                                                <div className="absolute right-0 mt-2 w-48 bg-background-primary border border-divider rounded-lg shadow-lg overflow-hidden">
+                                                <div className="absolute right-0 mt-2 w-48 bg-background-primary border border-divider rounded-sm shadow-lg overflow-hidden">
                                                     <div className="py-2">
                                                         <Link
                                                             to="/profile"
@@ -516,7 +516,7 @@ const Navbar = () => {
                                     <Link
                                         to="/profile"
                                         onClick={() => setShowMobileMenu(false)}
-                                        className="block w-full py-3 text-center text-sm font-medium text-text-primary bg-background-primary border border-divider rounded-lg"
+                                        className="block w-full py-3 text-center text-sm font-medium text-text-primary bg-background-primary border border-divider rounded-sm"
                                     >
                                         My Profile
                                     </Link>
@@ -525,7 +525,7 @@ const Navbar = () => {
                                             handleLogout();
                                             setShowMobileMenu(false);
                                         }}
-                                        className="block w-full py-3 text-center text-sm font-medium text-text-primary-invert bg-accent-2 rounded-lg"
+                                        className="block w-full py-3 text-center text-sm font-medium text-text-primary-invert bg-accent-2 rounded-sm"
                                     >
                                         Logout
                                     </button>
