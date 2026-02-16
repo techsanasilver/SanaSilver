@@ -98,7 +98,7 @@ const Login = () => {
     return (
         <div className="min-h-[90vh] flex items-center justify-center bg-background-primary px-4 py-8">
             <div className="">
-                <div className="bg-background-secondary/50 py-8 px-12 rounded-md flex flex-col items-center shadow-shadow shadow-lg">
+                <div className="bg-background-secondary/50 py-8 px-16 rounded-md flex flex-col items-center shadow-shadow shadow-lg">
                     {/* Logo */}
                     <div className="text-center mb-4">
                         <h1 className="text-2xl font-light tracking-widest text-text-primary mb-6">
@@ -117,14 +117,14 @@ const Login = () => {
 
                     {/* Error Message */}
                     {error && (
-                        <div className="mb-4 p-3 bg-red-50 border border-danger rounded text-sm text-danger">
+                        <div className="mt-4 p-3 text-sm text-danger">
                             {error}
                         </div>
                     )}
 
                     {/* Step 1: Phone Number */}
                     {step === 1 && (
-                        <form onSubmit={handleSendOTP} className="mt-8 w-75">
+                        <form onSubmit={handleSendOTP} className="mt-8 w-65">
                             <div className="mb-6">
                                 <label className="flex items-center gap-2 text-text-primary text-sm mb-3">
                                     <FaPhoneAlt className="text-base " />
@@ -141,7 +141,7 @@ const Login = () => {
                                         )
                                     }
                                     placeholder="Mobile Number"
-                                    className="w-full px-4 py-3 border border-divider rounded bg-white text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-text-primary"
+                                    className="w-full px-4 py-2 border-2 border-text-secondary/50 rounded-md bg-white text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-accent-1 focus:border-2"
                                     required
                                 />
                             </div>
@@ -149,7 +149,7 @@ const Login = () => {
                             <button
                                 type="submit"
                                 disabled={loading || phone.length !== 10}
-                                className="w-full py-3 bg-background-secondary text-text-primary font-normal rounded hover:bg-accent-1 hover:text-white disabled:bg-divider disabled:text-text-secondary/50 disabled:cursor-not-allowed transition-colors"
+                                className="w-full py-2 bg-accent-1 text-text-primary-invert font-normal rounded-md hover:bg-accent-1/80 disabled:bg-text-secondary/50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {loading ? "Sending..." : "Get OTP"}
                             </button>
@@ -215,18 +215,18 @@ const Login = () => {
                     )}
 
                     {/* Footer */}
-                    <p className="text-center text-xs text-text-secondary mt-16 font-light">
+                    <p className="text-center text-xs text-text-primary mt-20 mb-12">
                         By continuing, I agree to the{" "}
                         <Link
                             to="/terms"
-                            className="text-text-secondary underline hover:text-text-primary"
+                            className="text-accent-1 underline font-semibold hover:text-accent-2"
                         >
                             Terms & Conditions
                         </Link>{" "}
                         and{" "}
                         <Link
                             to="/privacy"
-                            className="text-text-secondary underline hover:text-text-primary"
+                            className="text-accent-1 underline font-semibold hover:text-accent-2"
                         >
                             Privacy Policy
                         </Link>

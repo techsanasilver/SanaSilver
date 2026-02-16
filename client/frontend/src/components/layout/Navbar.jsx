@@ -212,7 +212,7 @@ const Navbar = () => {
 
     return (
         <>
-            <nav className="sticky top-0 z-50 bg-background-primary border-b border-divider">
+            <nav className="sticky top-0 z-50 bg-background-primary">
                 {/* Desktop Navigation */}
                 <div className="hidden lg:block">
                     <div className="container mx-auto px-6">
