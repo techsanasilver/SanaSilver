@@ -48,7 +48,7 @@ async function registerAdmin(data, createdByAdminId) {
     });
 
     logger.info(
-        `New admin registered: ${email} with role: ${role} by admin: ${createdByAdminId}`
+        `New admin registered: ${email} with role: ${role} by admin: ${createdByAdminId}`,
     );
 
     const adminData = admin.toObject();
@@ -94,31 +94,56 @@ async function loginAdmin(email, password) {
 }
 
 async function refreshAccessToken(refreshToken) {
-    const decoded = verifyRefreshToken(refreshToken);
+    try {
+        const decoded = verifyRefreshToken(refreshToken);
 
-    const admin = await Admin.findById(decoded.adminId);
+        if (!decoded || !decoded.adminId) {
+            logger.error("Invalid refresh token payload:", decoded);
+            throw new Error("Invalid refresh token");
+        }
 
-    if (!admin) {
-        throw new Error("Admin not found");
+        const admin = await Admin.findById(decoded.adminId);
+
+        if (!admin) {
+            logger.error(
+                `Admin not found for ID: ${decoded.adminId} from refresh token`,
+            );
+            throw new Error("Admin not found");
+        }
+
+        if (!admin.isActive) {
+            throw new Error("Account is deactivated");
+        }
+
+        if (admin.tokenVersion !== decoded.tokenVersion) {
+            logger.warn(
+                `Token version mismatch for admin ${admin.email}: expected ${admin.tokenVersion}, got ${decoded.tokenVersion}`,
+            );
+            throw new Error("Invalid refresh token");
+        }
+
+        const newAccessToken = generateAccessToken(admin);
+
+        logger.info(`Access token refreshed for admin: ${admin.email}`);
+
+        return {
+            data: {
+                accessToken: newAccessToken,
+            },
+        };
+    } catch (error) {
+        // If it's a JWT error, provide more context
+        if (error.name === "JsonWebTokenError") {
+            logger.error("JWT verification failed:", error.message);
+            throw new Error("Invalid refresh token");
+        }
+        if (error.name === "TokenExpiredError") {
+            logger.error("Refresh token expired:", error.message);
+            throw new Error("Refresh token expired");
+        }
+        // Re-throw other errors
+        throw error;
     }
-
-    if (!admin.isActive) {
-        throw new Error("Account is deactivated");
-    }
-
-    if (admin.tokenVersion !== decoded.tokenVersion) {
-        throw new Error("Invalid refresh token");
-    }
-
-    const newAccessToken = generateAccessToken(admin);
-
-    logger.info(`Access token refreshed for admin: ${admin.email}`);
-
-    return {
-        data: {
-            accessToken: newAccessToken,
-        },
-    };
 }
 
 async function logoutAdmin(adminId) {

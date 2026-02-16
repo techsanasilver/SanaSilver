@@ -13,7 +13,7 @@ async function register(req, res, next) {
         if (!name || !email || !password) {
             return apiResponse.badRequest(
                 res,
-                "Name, email, and password are required"
+                "Name, email, and password are required",
             );
         }
 
@@ -21,7 +21,7 @@ async function register(req, res, next) {
 
         const { data } = await adminService.registerAdmin(
             { name, email, password, role, phone, avatar },
-            createdByAdminId
+            createdByAdminId,
         );
 
         return apiResponse.created(res, "Admin registered successfully", data);
@@ -41,7 +41,7 @@ async function login(req, res, next) {
         if (!email || !password) {
             return apiResponse.badRequest(
                 res,
-                "Email and password are required"
+                "Email and password are required",
             );
         }
 
@@ -50,12 +50,12 @@ async function login(req, res, next) {
         res.cookie(
             "accessToken",
             data.accessToken,
-            getAccessTokenCookieOptions()
+            getAccessTokenCookieOptions(),
         );
         res.cookie(
             "refreshToken",
             data.refreshToken,
-            getRefreshTokenCookieOptions()
+            getRefreshTokenCookieOptions(),
         );
 
         return apiResponse.success(res, "Login successful", {
@@ -94,15 +94,18 @@ async function refreshToken(req, res, next) {
         const refreshToken = req.cookies.refreshToken;
 
         if (!refreshToken) {
+            logger.warn("Refresh token not found in cookies");
             return apiResponse.unauthorized(res, "Refresh token not found");
         }
+
+        logger.debug("Attempting to refresh access token");
 
         const { data } = await adminService.refreshAccessToken(refreshToken);
 
         res.cookie(
             "accessToken",
             data.accessToken,
-            getAccessTokenCookieOptions()
+            getAccessTokenCookieOptions(),
         );
 
         return apiResponse.success(res, "Token refreshed successfully");
@@ -110,11 +113,12 @@ async function refreshToken(req, res, next) {
         logger.error("Error in refreshToken controller:", error.message);
         if (
             error.message.includes("Invalid") ||
-            error.message.includes("expired")
+            error.message.includes("expired") ||
+            error.message.includes("not found")
         ) {
             res.clearCookie("accessToken");
             res.clearCookie("refreshToken");
-            return apiResponse.unauthorized(res, "Invalid or expired token");
+            return apiResponse.unauthorized(res, error.message);
         }
         next(error);
     }
@@ -129,7 +133,7 @@ async function getMe(req, res, next) {
         return apiResponse.success(
             res,
             "Admin profile fetched successfully",
-            data
+            data,
         );
     } catch (error) {
         logger.error("Error in getMe controller:", error.message);
@@ -169,21 +173,21 @@ async function changePassword(req, res, next) {
         if (!oldPassword || !newPassword) {
             return apiResponse.badRequest(
                 res,
-                "Old password and new password are required"
+                "Old password and new password are required",
             );
         }
 
         if (newPassword.length < 8) {
             return apiResponse.badRequest(
                 res,
-                "New password must be at least 8 characters"
+                "New password must be at least 8 characters",
             );
         }
 
         const { data } = await adminService.changePassword(
             adminId,
             oldPassword,
-            newPassword
+            newPassword,
         );
 
         res.clearCookie("accessToken");
@@ -192,7 +196,7 @@ async function changePassword(req, res, next) {
         return apiResponse.success(
             res,
             "Password changed successfully. Please login again",
-            data
+            data,
         );
     } catch (error) {
         logger.error("Error in changePassword controller:", error.message);
