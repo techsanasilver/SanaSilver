@@ -215,12 +215,12 @@ const Navbar = () => {
             <nav className="sticky top-0 z-50 bg-background-primary">
                 {/* Desktop Navigation */}
                 <div className="hidden lg:block">
-                    <div className="container mx-auto px-6">
+                    <div className="px-12">
                         <div className="flex items-center justify-between h-16">
                             {/* Left: Logo */}
                             <div className="shrink-0">
                                 <Link to="/" className="flex items-center">
-                                    <span className="text-2xl font-light tracking-widest text-text-primary">
+                                    <span className="text-2xl font-light tracking-widest text-text-primary mr-20">
                                         SANA
                                     </span>
                                 </Link>
@@ -373,7 +373,7 @@ const Navbar = () => {
 
                 {/* Mobile Navigation */}
                 <div className="lg:hidden">
-                    <div className="container mx-auto px-4">
+                    <div className="px-4">
                         <div className="flex items-center justify-between h-16">
                             {/* Left: Hamburger Menu */}
                             <button
