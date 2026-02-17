@@ -11,7 +11,7 @@ import Admin from "../../features/auth/admin.model.js";
 
 const authMiddleware = async (req, res, next) => {
     try {
-        const token = req.cookies.accessToken;
+        const token = req.cookies.SS_admin_accessToken;
 
         if (!token) {
             return apiResponse.unauthorized(res, "Access token required");
@@ -24,7 +24,7 @@ const authMiddleware = async (req, res, next) => {
             if (error.name === "TokenExpiredError") {
                 return apiResponse.unauthorized(
                     res,
-                    "Token expired. Please refresh your token"
+                    "Token expired. Please refresh your token",
                 );
             }
             return apiResponse.unauthorized(res, "Invalid token");
@@ -39,7 +39,7 @@ const authMiddleware = async (req, res, next) => {
         if (!admin.isActive) {
             return apiResponse.forbidden(
                 res,
-                "Your account has been deactivated. Please contact support"
+                "Your account has been deactivated. Please contact support",
             );
         }
 

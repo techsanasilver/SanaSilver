@@ -5,7 +5,7 @@ import User from "../../features/auth/user.model.js";
 
 const authMiddleware = async (req, res, next) => {
     try {
-        const token = req.cookies.accessToken;
+        const token = req.cookies.SS_client_accessToken;
 
         if (!token) {
             return apiResponse.unauthorized(res, "Access token required");

@@ -7,7 +7,7 @@ const router = express.Router();
 // Optional auth middleware - works for both guest and logged-in users
 const optionalAuth = (req, res, next) => {
     // Try to authenticate, but don't fail if no token
-    const token = req.cookies.accessToken;
+    const token = req.cookies.SS_client_accessToken;
     if (!token) {
         return next(); // Continue without authentication
     }

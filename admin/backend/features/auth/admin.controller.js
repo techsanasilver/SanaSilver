@@ -48,12 +48,12 @@ async function login(req, res, next) {
         const { data } = await adminService.loginAdmin(email, password);
 
         res.cookie(
-            "accessToken",
+            "SS_admin_accessToken",
             data.accessToken,
             getAccessTokenCookieOptions(),
         );
         res.cookie(
-            "refreshToken",
+            "SS_admin_refreshToken",
             data.refreshToken,
             getRefreshTokenCookieOptions(),
         );
@@ -79,8 +79,11 @@ async function logout(req, res, next) {
 
         await adminService.logoutAdmin(adminId);
 
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
+        res.clearCookie("SS_admin_accessToken", getAccessTokenCookieOptions());
+        res.clearCookie(
+            "SS_admin_refreshToken",
+            getRefreshTokenCookieOptions(),
+        );
 
         return apiResponse.success(res, "Logout successful");
     } catch (error) {
@@ -91,7 +94,7 @@ async function logout(req, res, next) {
 
 async function refreshToken(req, res, next) {
     try {
-        const refreshToken = req.cookies.refreshToken;
+        const refreshToken = req.cookies.SS_admin_refreshToken;
 
         if (!refreshToken) {
             logger.warn("Refresh token not found in cookies");
@@ -103,7 +106,7 @@ async function refreshToken(req, res, next) {
         const { data } = await adminService.refreshAccessToken(refreshToken);
 
         res.cookie(
-            "accessToken",
+            "SS_admin_accessToken",
             data.accessToken,
             getAccessTokenCookieOptions(),
         );
@@ -116,8 +119,14 @@ async function refreshToken(req, res, next) {
             error.message.includes("expired") ||
             error.message.includes("not found")
         ) {
-            res.clearCookie("accessToken");
-            res.clearCookie("refreshToken");
+            res.clearCookie(
+                "SS_admin_accessToken",
+                getAccessTokenCookieOptions(),
+            );
+            res.clearCookie(
+                "SS_admin_refreshToken",
+                getRefreshTokenCookieOptions(),
+            );
             return apiResponse.unauthorized(res, error.message);
         }
         next(error);
@@ -190,8 +199,11 @@ async function changePassword(req, res, next) {
             newPassword,
         );
 
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
+        res.clearCookie("SS_admin_accessToken", getAccessTokenCookieOptions());
+        res.clearCookie(
+            "SS_admin_refreshToken",
+            getRefreshTokenCookieOptions(),
+        );
 
         return apiResponse.success(
             res,

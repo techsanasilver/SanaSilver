@@ -67,9 +67,13 @@ const verifyOTP = async (req, res) => {
         const refreshToken = generateRefreshToken(user);
 
         // Set cookies
-        res.cookie("accessToken", accessToken, getAccessTokenCookieOptions());
         res.cookie(
-            "refreshToken",
+            "SS_client_accessToken",
+            accessToken,
+            getAccessTokenCookieOptions(),
+        );
+        res.cookie(
+            "SS_client_refreshToken",
             refreshToken,
             getRefreshTokenCookieOptions(),
         );
@@ -110,7 +114,7 @@ const verifyOTP = async (req, res) => {
  */
 const refreshToken = async (req, res) => {
     try {
-        const refreshTokenFromCookie = req.cookies.refreshToken;
+        const refreshTokenFromCookie = req.cookies.SS_client_refreshToken;
 
         if (!refreshTokenFromCookie) {
             return apiResponse.unauthorized(res, "Refresh token required");
@@ -154,7 +158,7 @@ const refreshToken = async (req, res) => {
 
         // Set new access token cookie
         res.cookie(
-            "accessToken",
+            "SS_client_accessToken",
             newAccessToken,
             getAccessTokenCookieOptions(),
         );
@@ -175,9 +179,12 @@ const refreshToken = async (req, res) => {
  */
 const logout = async (req, res) => {
     try {
-        // Clear cookies
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
+        // Clear cookies with proper options (must match cookie settings)
+        res.clearCookie("SS_client_accessToken", getAccessTokenCookieOptions());
+        res.clearCookie(
+            "SS_client_refreshToken",
+            getRefreshTokenCookieOptions(),
+        );
 
         logger.info(`User logged out: ${req.user?.userId || "unknown"}`);
 
