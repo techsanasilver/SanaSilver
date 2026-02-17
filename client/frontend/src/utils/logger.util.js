@@ -60,14 +60,16 @@ const logger = {
      * Use for: Important operational events, user actions, system state changes
      */
     info: (message, ...args) => {
-        if (args.length > 0) {
-            console.groupCollapsed(formatMessage("INFO", message));
-            args.forEach((arg, index) => {
-                console.log(`Data ${index + 1}:`, arg);
-            });
-            console.groupEnd();
-        } else {
-            console.log(formatMessage("INFO", message));
+        if (isDevelopment) {
+            if (args.length > 0) {
+                console.groupCollapsed(formatMessage("INFO", message));
+                args.forEach((arg, index) => {
+                    console.log(`Data ${index + 1}:`, arg);
+                });
+                console.groupEnd();
+            } else {
+                console.log(formatMessage("INFO", message));
+            }
         }
     },
 

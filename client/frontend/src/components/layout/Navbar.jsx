@@ -8,17 +8,17 @@ import {
     FiChevronDown,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
+import { useCategories } from "../../context/CategoryContext";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
-import { getCategoryTree } from "../../api/categories.api";
 import logger from "../../utils/logger.util";
 
 const Navbar = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
+    const { categories } = useCategories();
     const { cart } = useCart();
     const { wishlistCount } = useWishlist();
-    const [categories, setCategories] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [showSearchBar, setShowSearchBar] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -27,19 +27,6 @@ const Navbar = () => {
     const [expandedSections, setExpandedSections] = useState([]);
     const userMenuRef = useRef(null);
     const searchRef = useRef(null);
-
-    // Fetch categories
-    useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const response = await getCategoryTree();
-                setCategories(response.data?.categories || []);
-            } catch (error) {
-                logger.error("Failed to fetch categories:", error);
-            }
-        };
-        fetchCategories();
-    }, []);
 
     // Close menus on outside click
     useEffect(() => {

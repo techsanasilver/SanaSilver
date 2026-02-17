@@ -1,7 +1,7 @@
 import axiosInstance from "../utils/axios";
 import logger from "../utils/logger.util";
 
-const API_PREFIX = "/client/products";
+const API_PREFIX = "/products";
 
 /**
  * Get all products with pagination and filters

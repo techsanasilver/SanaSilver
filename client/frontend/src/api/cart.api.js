@@ -1,7 +1,7 @@
 import axiosInstance from "../utils/axios";
 import logger from "../utils/logger.util";
 
-const API_PREFIX = "/client/cart";
+const API_PREFIX = "/cart";
 
 /**
  * Get user's cart

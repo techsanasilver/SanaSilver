@@ -1,8 +1,3 @@
-/**
- * Home Page
- * Landing page with banners, featured products, categories
- */
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Loader from "../components/common/Loader";
@@ -36,7 +31,7 @@ const Home = () => {
                 </p>
                 <Link
                     to="/shop"
-                    className="inline-block px-8 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors"
+                    className="inline-block px-8 py-3 bg-accent-1 text-white font-medium rounded-lg hover:bg-accent-2 transition-colors"
                 >
                     Shop Now
                 </Link>

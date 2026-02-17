@@ -1,7 +1,7 @@
 import axiosInstance from "../utils/axios";
 import logger from "../utils/logger.util";
 
-const API_PREFIX = "/client/checkout";
+const API_PREFIX = "/checkout";
 
 /**
  * Initiate checkout - validate cart and calculate pricing
