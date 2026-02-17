@@ -41,13 +41,4 @@ const getBannerById = async (req, res) => {
     }
 };
 
-export {
-    createBanner,
-    getAllBanners,
-    getBannerById,
-    updateBanner,
-    softDeleteBanner,
-    hardDeleteBanner,
-    updateBannerStatus,
-    reorderBanners,
-};
+export { getAllBanners, getBannerById };
