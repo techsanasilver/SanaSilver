@@ -5,6 +5,7 @@ import DivineSection from "../components/home/DivineSection";
 import HomeDecorSection from "../components/home/HomeDecorSection";
 import OurStory from "../components/home/OurStory";
 import Craftsmanship from "../components/home/Craftsmanship";
+import CuratedCollections from "../components/home/CuratedCollections";
 
 const Home = () => {
     return (
@@ -53,6 +54,9 @@ const Home = () => {
             <div class="w-full">
                 <div class="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
             </div>
+
+            {/* Curated Collections Section */}
+            <CuratedCollections limitToFour={false} />
         </div>
     );
 };
