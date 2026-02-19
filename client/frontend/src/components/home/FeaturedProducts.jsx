@@ -80,12 +80,12 @@ const FeaturedProducts = () => {
             <section className="py-12 md:py-16 bg-background-primary">
                 <div className="container mx-auto px-4 text-center">
                     <p className="text-danger">{error}</p>
-                    <button
+                    {/* <button
                         onClick={fetchFeaturedProducts}
                         className="mt-4 px-6 py-2 bg-accent-1 text-white rounded hover:bg-accent-2 transition-colors"
                     >
                         Try Again
-                    </button>
+                    </button> */}
                 </div>
             </section>
         );
