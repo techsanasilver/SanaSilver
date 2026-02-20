@@ -6,6 +6,7 @@ import HomeDecorSection from "../components/home/HomeDecorSection";
 import OurStory from "../components/home/OurStory";
 import Craftsmanship from "../components/home/Craftsmanship";
 import CuratedCollections from "../components/home/CuratedCollections";
+import Commitment from "../components/home/Commitment";
 
 const Home = () => {
     return (
@@ -57,6 +58,17 @@ const Home = () => {
 
             {/* Curated Collections Section */}
             <CuratedCollections limitToFour={false} />
+
+            <div class="w-full">
+                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
+            </div>
+
+            {/* Commitment Section */}
+            <Commitment />
+
+            <div class="w-full">
+                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
+            </div>
         </div>
     );
 };
