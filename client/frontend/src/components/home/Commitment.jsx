@@ -43,7 +43,7 @@ const Commitment = () => {
                 </div>
 
                 {/* Commitment Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 md:max-w-[70vw] mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 lg:max-w-[80vw] mx-auto">
                     {commitments.map((commitment, index) => (
                         <div
                             key={index}

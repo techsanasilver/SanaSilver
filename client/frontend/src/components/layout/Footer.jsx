@@ -19,8 +19,8 @@ const Footer = () => {
                     <div>
                         <h3 className="text-lg font-bold mb-4">Sana Silver</h3>
                         <p className="text-sm text-text-secondary-invert mb-4">
-                            Premium silver jewelry crafted with elegance and
-                            tradition. Quality guaranteed, delivered with care.
+                            Timeless silver jewellery crafted with passion and
+                            precision.
                         </p>
                         <div className="flex gap-3">
                             <a
