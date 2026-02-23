@@ -17,57 +17,57 @@ const Home = () => {
             {/* Featured Products Section */}
             <FeaturedProducts />
 
-            <div class="w-full">
-                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
             </div>
 
             {/* Our Story Section */}
             <OurStory />
 
-            <div class="w-full">
-                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
             </div>
 
             {/* Jewellery Section */}
             <JewellerySection />
 
-            <div class="w-full">
-                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mt-12 lg:mb-8"></div>
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mt-12 lg:mb-8"></div>
             </div>
 
             {/* Divine Section */}
             <DivineSection />
 
-            <div class="w-full">
-                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mt-12 lg:mb-8"></div>
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mt-12 lg:mb-8"></div>
             </div>
 
             {/* Home Decor Section */}
             <HomeDecorSection />
 
-            <div class="w-full">
-                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
             </div>
 
             {/* Craftsmanship Section */}
             <Craftsmanship />
 
-            <div class="w-full">
-                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
             </div>
 
             {/* Curated Collections Section */}
-            <CuratedCollections limitToFour={false} />
+            <CuratedCollections limitToFour={true} />
 
-            <div class="w-full">
-                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
             </div>
 
             {/* Commitment Section */}
             <Commitment />
 
-            <div class="w-full">
-                <div class="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
             </div>
         </div>
     );
