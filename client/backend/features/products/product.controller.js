@@ -33,15 +33,15 @@ export const getAllProductsController = async (req, res) => {
         // Build filters
         const filters = {};
         if (category) filters.category = category;
-        if (subcategory) filters.subcategory = subcategory;
+        if (subcategory) filters.subcategory = subcategory.split(",");
         if (collections) filters.collections = collections.split(",");
         if (purity) filters.purity = purity;
         if (isFeatured !== undefined)
             filters.isFeatured = isFeatured === "true";
-        if (gender) filters.gender = gender;
-        if (gemstone) filters.gemstone = gemstone;
-        if (occasion) filters.occasion = occasion;
-        if (plating) filters.plating = plating;
+        if (gender) filters.gender = gender.split(",");
+        if (gemstone) filters.gemstone = gemstone.split(",");
+        if (occasion) filters.occasion = occasion.split(",");
+        if (plating) filters.plating = plating.split(",");
         if (minPrice) filters.minPrice = parseFloat(minPrice);
         if (maxPrice) filters.maxPrice = parseFloat(maxPrice);
         if (inStock !== undefined) filters.inStock = inStock === "true";

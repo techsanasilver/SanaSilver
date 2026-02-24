@@ -10,9 +10,25 @@ const API_PREFIX = "/products";
  */
 export const getProducts = async (params = {}) => {
     try {
-        const response = await axiosInstance.get(API_PREFIX, { params });
+        // Serialize array parameters as comma-separated strings
+        const serializedParams = Object.entries(params).reduce(
+            (acc, [key, value]) => {
+                if (Array.isArray(value)) {
+                    // Convert arrays to comma-separated strings
+                    acc[key] = value.join(",");
+                } else {
+                    acc[key] = value;
+                }
+                return acc;
+            },
+            {},
+        );
+
+        const response = await axiosInstance.get(API_PREFIX, {
+            params: serializedParams,
+        });
         logger.info("Products fetched", {
-            count: response.data?.products?.length,
+            count: response.data?.meta.pagination.total,
         });
         return response;
     } catch (error) {

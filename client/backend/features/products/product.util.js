@@ -224,6 +224,13 @@ export const parseFormDataVariants = (variantsString) => {
 };
 
 /**
+ * Escape regex special characters
+ */
+const escapeRegex = (str) => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+/**
  * Build aggregation pipeline for product filtering
  */
 export const buildProductFilterPipeline = (filters = {}) => {
@@ -231,20 +238,6 @@ export const buildProductFilterPipeline = (filters = {}) => {
 
     // Match active products
     const productMatch = { isActive: true };
-
-    if (filters.category) {
-        // Convert category to ObjectId if it's a valid string
-        productMatch.category = isValidObjectId(filters.category)
-            ? new mongoose.Types.ObjectId(filters.category)
-            : filters.category;
-    }
-
-    if (filters.subcategory) {
-        // Convert subcategory to ObjectId if it's a valid string
-        productMatch.subcategory = isValidObjectId(filters.subcategory)
-            ? new mongoose.Types.ObjectId(filters.subcategory)
-            : filters.subcategory;
-    }
 
     if (filters.collections && filters.collections.length > 0) {
         // Convert collection IDs to ObjectIds if they're valid strings
@@ -262,21 +255,37 @@ export const buildProductFilterPipeline = (filters = {}) => {
         productMatch.isFeatured = filters.isFeatured;
     }
 
-    // Filter by product attributes (structured fields)
-    if (filters.gender) {
-        productMatch["attributes.gender"] = filters.gender;
+    // Filter by product attributes (structured fields) - case insensitive
+    if (filters.gender && filters.gender.length > 0) {
+        productMatch["attributes.gender"] = {
+            $in: filters.gender.map(
+                (g) => new RegExp(`^${escapeRegex(g)}$`, "i"),
+            ),
+        };
     }
 
-    if (filters.gemstone) {
-        productMatch["attributes.gemstone"] = filters.gemstone;
+    if (filters.gemstone && filters.gemstone.length > 0) {
+        productMatch["attributes.gemstone"] = {
+            $in: filters.gemstone.map(
+                (g) => new RegExp(`^${escapeRegex(g)}$`, "i"),
+            ),
+        };
     }
 
-    if (filters.occasion) {
-        productMatch["attributes.occasion"] = filters.occasion;
+    if (filters.occasion && filters.occasion.length > 0) {
+        productMatch["attributes.occasion"] = {
+            $in: filters.occasion.map(
+                (o) => new RegExp(`^${escapeRegex(o)}$`, "i"),
+            ),
+        };
     }
 
-    if (filters.plating) {
-        productMatch["attributes.plating"] = filters.plating;
+    if (filters.plating && filters.plating.length > 0) {
+        productMatch["attributes.plating"] = {
+            $in: filters.plating.map(
+                (p) => new RegExp(`^${escapeRegex(p)}$`, "i"),
+            ),
+        };
     }
 
     if (filters.search) {
@@ -316,6 +325,31 @@ export const buildProductFilterPipeline = (filters = {}) => {
             preserveNullAndEmptyArrays: true,
         },
     });
+
+    // Filter by category name (after lookup) - case insensitive
+    if (filters.category) {
+        pipeline.push({
+            $match: {
+                "categoryData.name": new RegExp(
+                    `^${escapeRegex(filters.category)}$`,
+                    "i",
+                ),
+            },
+        });
+    }
+
+    // Filter by subcategory names (after lookup) - case insensitive
+    if (filters.subcategory && filters.subcategory.length > 0) {
+        pipeline.push({
+            $match: {
+                "subcategoryData.name": {
+                    $in: filters.subcategory.map(
+                        (s) => new RegExp(`^${escapeRegex(s)}$`, "i"),
+                    ),
+                },
+            },
+        });
+    }
 
     // Lookup variants
     pipeline.push({
