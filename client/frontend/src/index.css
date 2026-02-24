@@ -64,20 +64,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-accent-2);
 }
-
-/* Custom Checkbox Styling */
-input[type="checkbox"] {
-    accent-color: var(--color-accent-1);
-}
-
-/* Focus Styles */
-/* :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-} */
-
-/* Selection Styles */
-/* ::selection {
-    background-color: var(--color-accent-light);
-    color: var(--color-primary);
-} */
