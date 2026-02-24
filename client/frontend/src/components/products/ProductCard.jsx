@@ -23,7 +23,11 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
     // Get primary image or first image
     const primaryImage =
         product.images?.find((img) => img.isPrimary) || product.images?.[0];
-    const imageUrl = getImageUrl(primaryImage, "medium", "/placeholder.jpg");
+    const imageUrl = getImageUrl(
+        primaryImage,
+        "medium",
+        "https://placehold.co/400",
+    );
 
     // Format price
     const formattedPrice = new Intl.NumberFormat("en-IN", {
@@ -82,7 +86,7 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
         <Link to={`/products/${product.slug}`} className="block">
             {/* Product Image Container */}
             <div
-                className="relative aspect-square border-none overflow-hidden rounded-sm group"
+                className="relative aspect-15/16 border-none overflow-hidden rounded-sm group"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >

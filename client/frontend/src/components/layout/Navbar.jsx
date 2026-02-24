@@ -142,6 +142,18 @@ const Navbar = () => {
                 </button>
                 {isExpanded && (
                     <div className="px-6 pb-4 space-y-2">
+                        {menu.title === "SHOP" && (
+                            <Link
+                                to="/shop"
+                                className="block py-2 text-sm text-text-secondary hover:text-accent-2 font-medium"
+                                onClick={() => {
+                                    setShowMobileMenu(false);
+                                    setExpandedSections([]);
+                                }}
+                            >
+                                Show All
+                            </Link>
+                        )}
                         {menu.items.map((item, index) => (
                             <Link
                                 key={index}
@@ -180,6 +192,18 @@ const Navbar = () => {
                 {isActive && menu.items.length > 0 && (
                     <div className="absolute left-0 top-full mt-0 w-48 bg-background-primary border border-divider rounded-sm shadow-lg overflow-hidden z-50">
                         <div className="py-2">
+                            {menu.title === "SHOP" && (
+                                <>
+                                    <Link
+                                        to="/shop"
+                                        className="block px-4 py-2.5 text-sm text-text-secondary hover:bg-background-secondary hover:text-text-primary font-medium"
+                                        onClick={() => setActiveDropdown(null)}
+                                    >
+                                        Show All
+                                    </Link>
+                                    <hr className="my-1 border-divider" />
+                                </>
+                            )}
                             {menu.items.map((item, index) => (
                                 <Link
                                     key={index}
