@@ -90,7 +90,7 @@ const Navbar = () => {
         title: "SHOP",
         items: categories.map((cat) => ({
             label: cat.name,
-            link: `/shop?category=${cat.slug}`,
+            link: `/shop?category=${encodeURIComponent(cat.name.toLowerCase())}`,
         })),
     };
 

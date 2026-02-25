@@ -21,6 +21,7 @@ const Shop = () => {
         filters,
         setFilter,
         setFilters,
+        clearFilter,
         clearAllFilters,
         activeFilterCount,
     } = useProductFilters();
@@ -87,6 +88,13 @@ const Shop = () => {
                                     <span className="text-sm font-medium text-text-primary">
                                         "{filters.search}"
                                     </span>
+                                    <button
+                                        onClick={() => clearFilter("search")}
+                                        className="ml-1 text-text-secondary hover:text-accent-1 transition-colors"
+                                        aria-label="Clear search"
+                                    >
+                                        <IoMdClose className="w-4 h-4" />
+                                    </button>
                                 </div>
                             )}
                         </div>
