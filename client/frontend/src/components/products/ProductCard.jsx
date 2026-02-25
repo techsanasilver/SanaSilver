@@ -75,7 +75,7 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
     // Determine badge text
     const getBadge = () => {
         if (!showBadge) return null;
-        if (product.isFeatured) return "Best Seller";
+        if (product.isFeatured) return "Featured";
         // Add more badge logic here (New, Sale, etc.)
         return null;
     };

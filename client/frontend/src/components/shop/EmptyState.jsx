@@ -2,7 +2,7 @@ import { MdInventory2 } from "react-icons/md";
 
 const EmptyState = ({ hasFilters, onClearFilters }) => {
     return (
-        <div className="flex min-h-100 items-center justify-center rounded-lg bg-white p-12 shadow-sm">
+        <div className="flex min-h-100 items-center justify-center p-12">
             <div className="text-center">
                 {/* Icon */}
                 <MdInventory2 className="mx-auto h-16 w-16 text-text-secondary opacity-50" />

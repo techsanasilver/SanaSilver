@@ -5,7 +5,7 @@ import { IoChevronDown } from "react-icons/io5";
  * Collapsible filter section wrapper
  * Used to group related filter options
  */
-const FilterSection = ({ title, defaultOpen = true, children }) => {
+const FilterSection = ({ title, defaultOpen = false, children }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
     return (
@@ -14,7 +14,7 @@ const FilterSection = ({ title, defaultOpen = true, children }) => {
                 onClick={() => setIsOpen(!isOpen)}
                 className="mb-3 flex w-full items-center justify-between text-left text-text-primary hover:text-accent-1"
             >
-                <span className=" ">{title}</span>
+                <span className="underline underline-offset-2 ">{title}</span>
                 <IoChevronDown
                     className={`h-4 w-4  transition-transform ${
                         isOpen ? "rotate-180" : ""

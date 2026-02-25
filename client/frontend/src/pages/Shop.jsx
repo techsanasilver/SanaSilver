@@ -74,9 +74,9 @@ const Shop = () => {
     return (
         <div className="min-h-screen bg-background-primary">
             {/* Toolbar - Full Width Above Everything (Desktop Only) */}
-            <div className="hidden lg:block sticky top-0 z-30 bg-background-secondary border-b border-divider">
-                <div className="px-4 lg:px-6 py-4">
-                    <div className="flex items-center justify-between gap-4">
+            <div className="hidden lg:block sticky top-0 z-30 bg-background-secondary ">
+                <div className="px-4 lg:px-6">
+                    <div className="flex items-center justify-between gap-4 h-16">
                         {/* Left: Search Term */}
                         <div className="flex-1">
                             {filters.search && (
@@ -159,7 +159,7 @@ const Shop = () => {
                 {/* Left Sidebar - Desktop Only */}
                 <aside className="hidden w-[20vw] max-w-56 shrink-0 lg:block">
                     <div className="sticky top-20 ">
-                        <div className=" rounded-sm p-6 max-h-[calc(100vh-10rem)] overflow-y-auto ">
+                        <div className=" rounded-sm p-6 pt-0 max-h-[calc(100vh-10rem)] overflow-y-auto ">
                             <div className="mb-8 flex items-center justify-between">
                                 <h2 className="text-2xl font-semibold text-text-primary">
                                     FILTERS
