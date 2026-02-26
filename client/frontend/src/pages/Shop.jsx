@@ -167,7 +167,7 @@ const Shop = () => {
                 {/* Left Sidebar - Desktop Only */}
                 <aside className="hidden w-[20vw] max-w-56 shrink-0 lg:block">
                     <div className="sticky top-20 ">
-                        <div className=" rounded-sm p-6 pt-0 max-h-[calc(100vh-10rem)] overflow-y-auto ">
+                        <div className=" rounded-sm p-6 pl-0 pt-0 max-h-[calc(100vh-10rem)] overflow-y-auto ">
                             <div className="mb-8 flex items-center justify-between">
                                 <h2 className="text-2xl font-semibold text-text-primary">
                                     FILTERS
