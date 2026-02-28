@@ -163,19 +163,16 @@ const productSchema = new mongoose.Schema(
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Admin",
-            required: [true, "Created by admin is required"],
         },
         updatedBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Admin",
         },
     },
     {
         timestamps: true,
         toJSON: { virtuals: true },
         toObject: { virtuals: true },
-    }
+    },
 );
 
 // Virtual to get all variants for this product
@@ -206,7 +203,7 @@ productSchema.virtual("totalStock").get(function () {
     if (this.variantsData && this.variantsData.length > 0) {
         return this.variantsData.reduce(
             (sum, v) => sum + (v.stockQuantity || 0),
-            0
+            0,
         );
     }
     return 0;

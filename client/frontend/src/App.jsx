@@ -25,7 +25,7 @@ const App = () => {
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
                 <Route path="/shop" element={<Shop />} />
-                <Route path="/products/:id" element={<ProductDetail />} />
+                <Route path="/products/:slug" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
 
                 {/* Public Only Routes (redirect if logged in) */}

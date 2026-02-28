@@ -170,12 +170,9 @@ const productVariantSchema = new mongoose.Schema(
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Admin",
-            required: [true, "Created by admin is required"],
         },
         updatedBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Admin",
         },
     },
     {
