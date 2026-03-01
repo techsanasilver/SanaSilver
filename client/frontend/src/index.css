@@ -67,3 +67,35 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-accent-2);
 }
+
+/* Animations */
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+/* Thin Scrollbar for Filter Panels */
+.filter-panel-scroll::-webkit-scrollbar,
+.filter-sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.filter-panel-scroll::-webkit-scrollbar-track,
+.filter-sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.filter-panel-scroll::-webkit-scrollbar-thumb,
+.filter-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-divider);
+    border-radius: 2px;
+}
+
+.filter-panel-scroll::-webkit-scrollbar-thumb:hover,
+.filter-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-1);
+}

@@ -59,6 +59,18 @@ const Shop = () => {
         };
     }, []);
 
+    // Prevent body scroll when mobile panels are open
+    useEffect(() => {
+        if (showFilters || showSort) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+        }
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [showFilters, showSort]);
+
     // Sort options
     const sortOptions = [
         { value: "newest", label: "Newest" },
@@ -73,7 +85,39 @@ const Shop = () => {
     );
 
     return (
-        <div className="min-h-screen bg-background-primary">
+        <div className="min-h-screen bg-background-primary pb-20 lg:pb-0">
+            {/* Mobile Toolbar - Search Term Only */}
+            <div className="sticky top-0 z-30 bg-background-secondary lg:hidden">
+                <div className="px-4">
+                    <div className="flex items-center justify-center h-14">
+                        {/* Search Term or Product Count */}
+                        {filters.search ? (
+                            <div className="flex items-center gap-2 flex-1">
+                                <span className="text-xs text-text-secondary">
+                                    Searching:
+                                </span>
+                                <span className="text-sm font-medium text-text-primary">
+                                    "{filters.search}"
+                                </span>
+                                <button
+                                    onClick={() => clearFilter("search")}
+                                    className="ml-1 text-text-secondary hover:text-accent-1 transition-colors"
+                                    aria-label="Clear search"
+                                >
+                                    <IoMdClose className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <p className="text-sm font-medium text-accent-2 tracking-widest">
+                                {isFirstLoad && loading
+                                    ? "Loading..."
+                                    : `${totalCount} ${totalCount === 1 ? "PRODUCT" : "PRODUCTS"}`}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {/* Toolbar - Full Width Above Everything (Desktop Only) */}
             <div className="hidden lg:block sticky top-0 z-30 bg-background-secondary ">
                 <div className="px-4 lg:px-6">
@@ -167,7 +211,7 @@ const Shop = () => {
                 {/* Left Sidebar - Desktop Only */}
                 <aside className="hidden w-[20vw] max-w-56 shrink-0 lg:block">
                     <div className="sticky top-20 ">
-                        <div className=" rounded-sm p-6 pl-0 pt-0 max-h-[calc(100vh-10rem)] overflow-y-auto ">
+                        <div className="rounded-sm p-6 pl-0 pt-0 max-h-[calc(100vh-10rem)] overflow-y-auto filter-sidebar-scroll">
                             <div className="mb-8 flex items-center justify-between">
                                 <h2 className="text-2xl font-semibold text-text-primary">
                                     FILTERS
@@ -436,14 +480,27 @@ const Shop = () => {
                 </div>
             </div>
 
-            {/* Mobile Filter Sheet - Placeholder */}
+            {/* Mobile Filter Sheet */}
             {showFilters && (
-                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 lg:hidden">
-                    <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white">
-                        <div className="sticky top-0 z-10 border-b border-divider bg-white px-4 py-4">
+                <div
+                    className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+                    onClick={() => setShowFilters(false)}
+                >
+                    <div
+                        className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-background-primary transform transition-transform duration-300 ease-out flex flex-col"
+                        style={{ animation: "slideUp 0.3s ease-out" }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header - Fixed */}
+                        <div className="shrink-0 border-b border-divider bg-background-primary px-4 py-4">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-lg font-semibold text-text-primary">
                                     Filters
+                                    {activeFilterCount > 0 && (
+                                        <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent-1 text-xs text-white">
+                                            {activeFilterCount}
+                                        </span>
+                                    )}
                                 </h2>
                                 <button
                                     onClick={() => setShowFilters(false)}
@@ -453,19 +510,176 @@ const Shop = () => {
                                 </button>
                             </div>
                         </div>
-                        <div className="p-4">
-                            <p className="text-sm text-text-secondary">
-                                Mobile filters coming in Phase 4...
-                            </p>
+
+                        {/* Filter Content - Scrollable */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-6 filter-panel-scroll">
+                            {/* Category & Subcategory */}
+                            <CategoryFilter
+                                categories={categories}
+                                category={filters.category}
+                                subcategory={filters.subcategory}
+                                onCategoryChange={(val) =>
+                                    setFilters({
+                                        category: val,
+                                        subcategory: null,
+                                    })
+                                }
+                                onSubcategoryChange={(val) =>
+                                    setFilter("subcategory", val)
+                                }
+                            />
+
+                            {/* Price Range */}
+                            <PriceRangeFilter
+                                minPrice={filters.minPrice}
+                                maxPrice={filters.maxPrice}
+                                onMinChange={(val) =>
+                                    setFilter("minPrice", val)
+                                }
+                                onMaxChange={(val) =>
+                                    setFilter("maxPrice", val)
+                                }
+                            />
+
+                            {/* Gender */}
+                            <CheckboxFilter
+                                title="Gender"
+                                options={[
+                                    { value: "men", label: "Men's" },
+                                    { value: "women", label: "Women's" },
+                                    { value: "unisex", label: "Unisex" },
+                                ]}
+                                selectedValues={filters.gender || []}
+                                onChange={(val) => setFilter("gender", val)}
+                            />
+
+                            {/* Purity */}
+                            <SingleCheckboxFilter
+                                title="Purity"
+                                options={["925", "999"]}
+                                selectedValue={filters.purity || null}
+                                onChange={(val) => setFilter("purity", val)}
+                            />
+
+                            {/* Gemstone */}
+                            <CheckboxFilter
+                                title="Gemstone"
+                                options={[
+                                    { value: "diamond", label: "Diamond" },
+                                    { value: "ruby", label: "Ruby" },
+                                    { value: "emerald", label: "Emerald" },
+                                    { value: "sapphire", label: "Sapphire" },
+                                    { value: "pearl", label: "Pearl" },
+                                    { value: "topaz", label: "Topaz" },
+                                    { value: "amethyst", label: "Amethyst" },
+                                    { value: "none", label: "None" },
+                                ]}
+                                selectedValues={filters.gemstone || []}
+                                onChange={(val) => setFilter("gemstone", val)}
+                            />
+
+                            {/* Occasion */}
+                            <CheckboxFilter
+                                title="Occasion"
+                                options={[
+                                    { value: "wedding", label: "Wedding" },
+                                    {
+                                        value: "engagement",
+                                        label: "Engagement",
+                                    },
+                                    { value: "casual", label: "Casual" },
+                                    { value: "formal", label: "Formal" },
+                                    { value: "party", label: "Party" },
+                                    { value: "dailywear", label: "Daily Wear" },
+                                    { value: "festival", label: "Festival" },
+                                ]}
+                                selectedValues={filters.occasion || []}
+                                onChange={(val) => setFilter("occasion", val)}
+                            />
+
+                            {/* Plating */}
+                            <CheckboxFilter
+                                title="Plating"
+                                options={[
+                                    { value: "gold", label: "Gold" },
+                                    { value: "rosegold", label: "Rose Gold" },
+                                    { value: "rhodium", label: "Rhodium" },
+                                    { value: "whitegold", label: "White Gold" },
+                                ]}
+                                selectedValues={filters.plating || []}
+                                onChange={(val) => setFilter("plating", val)}
+                            />
+
+                            {/* Boolean Filters */}
+                            <FilterSection title="More Filters">
+                                <div className="space-y-1">
+                                    <ToggleFilter
+                                        label="In Stock"
+                                        value={filters.inStock}
+                                        onChange={(val) =>
+                                            setFilter("inStock", val || null)
+                                        }
+                                    />
+                                    <ToggleFilter
+                                        label="On Sale"
+                                        value={filters.onSale}
+                                        onChange={(val) =>
+                                            setFilter("onSale", val || null)
+                                        }
+                                    />
+                                    <ToggleFilter
+                                        label="New Arrivals"
+                                        value={filters.newArrivals}
+                                        onChange={(val) =>
+                                            setFilter(
+                                                "newArrivals",
+                                                val || null,
+                                            )
+                                        }
+                                    />
+                                    <ToggleFilter
+                                        label="Customizable"
+                                        value={filters.customizable}
+                                        onChange={(val) =>
+                                            setFilter(
+                                                "customizable",
+                                                val || null,
+                                            )
+                                        }
+                                    />
+                                </div>
+                            </FilterSection>
                         </div>
+
+                        {/* Footer - Fixed (only show if filters are active) */}
+                        {activeFilterCount > 0 && (
+                            <div className="shrink-0  bg-backhround-primary px-4 py-3">
+                                <button
+                                    onClick={() => {
+                                        clearAllFilters();
+                                        setShowFilters(false);
+                                    }}
+                                    className="w-full py-3 px-4 border border-divider rounded-sm text-sm font-medium text-text-primary hover:bg-background-secondary transition-colors"
+                                >
+                                    Clear All Filters
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* Mobile Sort Sheet - Placeholder */}
+            {/* Mobile Sort Sheet */}
             {showSort && (
-                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 lg:hidden">
-                    <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-white">
+                <div
+                    className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+                    onClick={() => setShowSort(false)}
+                >
+                    <div
+                        className="absolute bottom-0 left-0 right-0 bg-background-primary transform transition-transform duration-300 ease-out"
+                        style={{ animation: "slideUp 0.3s ease-out" }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="border-b border-divider px-4 py-4">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-lg font-semibold text-text-primary">
@@ -487,11 +701,11 @@ const Shop = () => {
                                         setFilter("sortBy", option.value);
                                         setShowSort(false);
                                     }}
-                                    className={`w-full px-4 py-3 text-left hover:bg-background-primary ${
+                                    className={`w-full px-4 py-3.5 text-left rounded-sm transition-colors text-text-primary ${
                                         (filters.sortBy || "newest") ===
                                         option.value
-                                            ? "font-semibold text-accent-1"
-                                            : "text-text-primary"
+                                            ? "font-semibold  bg-background-secondary"
+                                            : "hover:bg-background-secondary"
                                     }`}
                                 >
                                     {option.label}
