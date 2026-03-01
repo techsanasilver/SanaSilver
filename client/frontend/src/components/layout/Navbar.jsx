@@ -231,7 +231,7 @@ const Navbar = () => {
                             {/* Left: Logo */}
                             <div className="shrink-0">
                                 <Link to="/" className="flex items-center">
-                                    <span className="text-2xl font-light tracking-widest text-text-primary mr-20">
+                                    <span className="text-2xl font-mediumwhats font-display tracking-widest text-text-primary mr-20">
                                         SANA
                                     </span>
                                 </Link>

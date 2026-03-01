@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FiShoppingBag, FiHeart } from "react-icons/fi";
+import { FiShoppingBag, FiHeart, FiChevronDown } from "react-icons/fi";
 import { FaHeart, FaStar } from "react-icons/fa";
 import ProductDetailSkeleton from "../components/products/ProductDetailSkeleton";
 import ProductReviews from "../components/products/ProductReviews";
@@ -27,6 +27,7 @@ const ProductDetail = () => {
     const [isWishlistLoading, setIsWishlistLoading] = useState(false);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
     const [activeTab, setActiveTab] = useState("description");
+    const [expandedSections, setExpandedSections] = useState(["description"]);
 
     // Fetch product and variants
     useEffect(() => {
@@ -175,6 +176,15 @@ const ProductDetail = () => {
         }).format(price);
     };
 
+    // Toggle collapsible section for mobile
+    const toggleSection = (section) => {
+        setExpandedSections((prev) =>
+            prev.includes(section)
+                ? prev.filter((s) => s !== section)
+                : [...prev, section],
+        );
+    };
+
     if (loading) {
         return <ProductDetailSkeleton />;
     }
@@ -252,7 +262,7 @@ const ProductDetail = () => {
                     <div className="space-y-5">
                         {/* Title */}
                         <div>
-                            <h1 className="text-2xl lg:text-3xl xl:text-4xl font-light text-text-primary mb-3">
+                            <h1 className="text-2xl lg:text-3xl xl:text-4xl font-medium font-display text-text-primary mb-3">
                                 {product.name}
                             </h1>
 
@@ -449,8 +459,8 @@ const ProductDetail = () => {
                             </button>
                         </div>
 
-                        {/* Tabs Section */}
-                        <div className="mt-8">
+                        {/* Tabs Section - Desktop */}
+                        <div className="mt-8 hidden lg:block">
                             {/* Tab Headers */}
                             <div className="border-b border-divider">
                                 <div className="flex gap-6 overflow-x-auto">
@@ -599,6 +609,194 @@ const ProductDetail = () => {
 
                                 {activeTab === "care" && (
                                     <div className="text-sm xl:text-base text-text-secondary leading-relaxed space-y-3">
+                                        <p>
+                                            • Store in a cool, dry place away
+                                            from direct sunlight.
+                                        </p>
+                                        <p>
+                                            • Clean gently with a soft cloth
+                                            after each use.
+                                        </p>
+                                        <p>
+                                            • Avoid contact with perfumes,
+                                            cosmetics, and harsh chemicals.
+                                        </p>
+                                        <p>
+                                            • Remove jewelry before bathing,
+                                            swimming, or exercising.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Collapsible Sections - Mobile */}
+                        <div className="mt-8 lg:hidden space-y-3">
+                            {/* Description Section */}
+                            <div className="border border-divider rounded-sm">
+                                <button
+                                    onClick={() => toggleSection("description")}
+                                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                                >
+                                    <span className="text-sm font-medium text-text-primary">
+                                        Description
+                                    </span>
+                                    <FiChevronDown
+                                        className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${
+                                            expandedSections.includes(
+                                                "description",
+                                            )
+                                                ? "rotate-180"
+                                                : ""
+                                        }`}
+                                    />
+                                </button>
+                                {expandedSections.includes("description") && (
+                                    <div className="px-4 pb-4 text-sm text-text-secondary leading-relaxed border-t border-divider pt-4">
+                                        {product.description ? (
+                                            <p className="whitespace-pre-line">
+                                                {product.description}
+                                            </p>
+                                        ) : (
+                                            <p>No description available.</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Specifications Section */}
+                            <div className="border border-divider rounded-sm">
+                                <button
+                                    onClick={() =>
+                                        toggleSection("specifications")
+                                    }
+                                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                                >
+                                    <span className="text-sm font-medium text-text-primary">
+                                        Specifications
+                                    </span>
+                                    <FiChevronDown
+                                        className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${
+                                            expandedSections.includes(
+                                                "specifications",
+                                            )
+                                                ? "rotate-180"
+                                                : ""
+                                        }`}
+                                    />
+                                </button>
+                                {expandedSections.includes(
+                                    "specifications",
+                                ) && (
+                                    <div className="px-4 pb-4 border-t border-divider pt-4">
+                                        {selectedVariant ? (
+                                            <div className="text-sm">
+                                                <div className="flex py-2">
+                                                    <span className="text-text-secondary w-30">
+                                                        SKU:
+                                                    </span>
+                                                    <span className="text-text-primary font-medium">
+                                                        {selectedVariant.sku}
+                                                    </span>
+                                                </div>
+                                                {selectedVariant.weight && (
+                                                    <div className="flex py-2">
+                                                        <span className="text-text-secondary w-30">
+                                                            Weight:
+                                                        </span>
+                                                        <span className="text-text-primary">
+                                                            {
+                                                                selectedVariant.weight
+                                                            }
+                                                            g
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {selectedVariant.dimensions
+                                                    ?.length && (
+                                                    <div className="flex py-2">
+                                                        <span className="text-text-secondary w-30">
+                                                            Dimensions:
+                                                        </span>
+                                                        <span className="text-text-primary">
+                                                            {
+                                                                selectedVariant
+                                                                    .dimensions
+                                                                    .length
+                                                            }
+                                                            {selectedVariant
+                                                                .dimensions
+                                                                .width &&
+                                                                ` x ${selectedVariant.dimensions.width}`}
+                                                            {selectedVariant
+                                                                .dimensions
+                                                                .height &&
+                                                                ` x ${selectedVariant.dimensions.height}`}{" "}
+                                                            cm
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-text-secondary">
+                                                Select a variant to view
+                                                specifications.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Stone Details Section */}
+                            <div className="border border-divider rounded-sm">
+                                <button
+                                    onClick={() =>
+                                        toggleSection("stone-details")
+                                    }
+                                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                                >
+                                    <span className="text-sm font-medium text-text-primary">
+                                        Stone Details
+                                    </span>
+                                    <FiChevronDown
+                                        className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${
+                                            expandedSections.includes(
+                                                "stone-details",
+                                            )
+                                                ? "rotate-180"
+                                                : ""
+                                        }`}
+                                    />
+                                </button>
+                                {expandedSections.includes("stone-details") && (
+                                    <div className="px-4 pb-4 text-sm text-text-secondary leading-relaxed border-t border-divider pt-4">
+                                        <p>
+                                            Stone details information will be
+                                            displayed here.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Care Instructions Section */}
+                            <div className="border border-divider rounded-sm">
+                                <button
+                                    onClick={() => toggleSection("care")}
+                                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                                >
+                                    <span className="text-sm font-medium text-text-primary">
+                                        Care Instructions
+                                    </span>
+                                    <FiChevronDown
+                                        className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${
+                                            expandedSections.includes("care")
+                                                ? "rotate-180"
+                                                : ""
+                                        }`}
+                                    />
+                                </button>
+                                {expandedSections.includes("care") && (
+                                    <div className="px-4 pb-4 text-sm text-text-secondary leading-relaxed border-t border-divider pt-4 space-y-3">
                                         <p>
                                             • Store in a cool, dry place away
                                             from direct sunlight.
