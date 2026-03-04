@@ -23,14 +23,16 @@ export const getWishlist = async () => {
 /**
  * Add product to wishlist
  * @param {string} productId - Product ID
+ * @param {string} variantId - Variant ID
  * @returns {Promise}
  */
-export const addToWishlist = async (productId) => {
+export const addToWishlist = async (productId, variantId) => {
     try {
         const response = await axiosInstance.post(`${API_PREFIX}/add`, {
             productId,
+            variantId,
         });
-        logger.info("Item added to wishlist", { productId });
+        logger.info("Item added to wishlist", { productId, variantId });
         return response;
     } catch (error) {
         logger.error("Failed to add to wishlist:", error);
@@ -41,17 +43,33 @@ export const addToWishlist = async (productId) => {
 /**
  * Remove product from wishlist
  * @param {string} productId - Product ID
+ * @param {string} variantId - Variant ID
  * @returns {Promise}
  */
-export const removeFromWishlist = async (productId) => {
+export const removeFromWishlist = async (productId, variantId) => {
     try {
         const response = await axiosInstance.delete(`${API_PREFIX}/remove`, {
-            data: { productId },
+            data: { productId, variantId },
         });
-        logger.info("Item removed from wishlist", { productId });
+        logger.info("Item removed from wishlist", { productId, variantId });
         return response;
     } catch (error) {
         logger.error("Failed to remove from wishlist:", error);
+        throw error;
+    }
+};
+
+/**
+ * Clear entire wishlist
+ * @returns {Promise}
+ */
+export const clearWishlist = async () => {
+    try {
+        const response = await axiosInstance.delete(`${API_PREFIX}/clear`);
+        logger.info("Wishlist cleared");
+        return response;
+    } catch (error) {
+        logger.error("Failed to clear wishlist:", error);
         throw error;
     }
 };

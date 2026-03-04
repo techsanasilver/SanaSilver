@@ -2,6 +2,7 @@ import Wishlist from "./wishlist.model.js";
 import Product from "../products/product.model.js";
 import ProductVariant from "../products/product-variant.model.js";
 import * as cartService from "../cart/cart.service.js";
+import { getImageVariants } from "../../shared/utils/cloudinary.util.js";
 import logger from "../../shared/utils/logger.util.js";
 
 /**
@@ -37,15 +38,15 @@ export const getWishlistWithDetails = async (userId) => {
     try {
         const wishlist = await getOrCreateWishlist(userId);
 
-        // Populate product and variant details
+        // Populate product and variant details with all necessary fields
         await wishlist.populate([
             {
                 path: "items.productId",
-                select: "name slug images isActive",
+                select: "name slug description images isActive minPrice category subcategory",
             },
             {
                 path: "items.variantId",
-                select: "attributes price stockQuantity isActive images",
+                select: "sku variantName attributes sellingPrice mrp stockQuantity isActive images weight dimensions",
             },
         ]);
 
@@ -66,6 +67,28 @@ export const getWishlistWithDetails = async (userId) => {
             ) {
                 removedItems.push(product ? product.name : "Unknown Product");
                 continue;
+            }
+
+            // Generate image URL variants for product
+            if (product.images && product.images.length > 0) {
+                product.images = product.images.map((img) => {
+                    const imgObj = img.toObject ? img.toObject() : img;
+                    return {
+                        ...imgObj,
+                        urls: getImageVariants(imgObj.publicId),
+                    };
+                });
+            }
+
+            // Generate image URL variants for variant
+            if (variant.images && variant.images.length > 0) {
+                variant.images = variant.images.map((img) => {
+                    const imgObj = img.toObject ? img.toObject() : img;
+                    return {
+                        ...imgObj,
+                        urls: getImageVariants(imgObj.publicId),
+                    };
+                });
             }
 
             validItems.push(item);

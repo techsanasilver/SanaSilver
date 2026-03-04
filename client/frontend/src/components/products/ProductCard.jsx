@@ -1,24 +1,37 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { FiShoppingBag } from "react-icons/fi";
 import { FaRegHeart, FaHeart } from "react-icons/fa";
 
 import { getImageUrl } from "../../utils/image.util";
-import { addToWishlist, removeFromWishlist } from "../../api/wishlist.api";
+import { useWishlist } from "../../context/WishlistContext";
 import logger from "../../utils/logger.util";
 
-/**
- * ProductCard Component
- * Displays product with hover effects: image zoom, wishlist toggle, quick add button
- *
- * @param {Object} product - Product object with images, name, price, ratings
- * @param {boolean} showBadge - Whether to show badge (Best Seller, New, etc.)
- * @param {Function} onQuickAdd - Callback for quick add button click
- */
 const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
     const [isHovered, setIsHovered] = useState(false);
-    const [isInWishlist, setIsInWishlist] = useState(false);
-    const [isWishlistLoading, setIsWishlistLoading] = useState(false);
+    const {
+        isInWishlist,
+        toggleWishlist,
+        isLoading: isWishlistLoading,
+    } = useWishlist();
+
+    // Get the first available (in-stock) variant or first variant
+    const firstVariant = useMemo(() => {
+        if (!product.variants || product.variants.length === 0) {
+            return null;
+        }
+        const inStockVariant = product.variants.find(
+            (v) => v.stockQuantity > 0 && v.isActive,
+        );
+        return inStockVariant || product.variants[0];
+    }, [product.variants]);
+
+    // Check if this product+variant is wishlisted
+    const isWishlisted = useMemo(() => {
+        return firstVariant
+            ? isInWishlist(product._id, firstVariant._id)
+            : false;
+    }, [firstVariant, product._id, isInWishlist]);
 
     // Get primary image or first image
     const primaryImage =
@@ -41,25 +54,23 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
         e.preventDefault(); // Prevent navigation
         e.stopPropagation();
 
-        setIsWishlistLoading(true);
+        if (!firstVariant) {
+            logger.warn("No variant available for wishlist", {
+                productId: product._id,
+            });
+            return;
+        }
+
         try {
-            if (isInWishlist) {
-                await removeFromWishlist(product._id);
-                setIsInWishlist(false);
-                logger.info("Removed from wishlist", {
-                    productId: product._id,
-                });
-            } else {
-                await addToWishlist(product._id);
-                setIsInWishlist(true);
-                logger.info("Added to wishlist", { productId: product._id });
-            }
+            await toggleWishlist(product._id, firstVariant._id);
+            logger.info("Wishlist toggled", {
+                productId: product._id,
+                variantId: firstVariant._id,
+            });
         } catch (error) {
             logger.error("Wishlist toggle error:", error);
             // TODO: Show toast notification when NotificationContext is implemented
             console.error("Failed to update wishlist");
-        } finally {
-            setIsWishlistLoading(false);
         }
     };
 
@@ -100,22 +111,22 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
                 {/* Wishlist Button */}
                 <button
                     onClick={handleWishlistToggle}
-                    disabled={isWishlistLoading}
-                    className={`absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-md  ${
+                    disabled={isWishlistLoading || !firstVariant}
+                    className={`absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-md transition-all duration-300 ${
                         isHovered
                             ? "opacity-100 translate-y-0"
                             : "opacity-0 -translate-y-2"
                     } ${isWishlistLoading ? "cursor-wait" : "cursor-pointer"} hover:bg-accent-1 group/wishlist`}
                     aria-label={
-                        isInWishlist
+                        isWishlisted
                             ? "Remove from wishlist"
                             : "Add to wishlist"
                     }
                 >
-                    {isInWishlist ? (
-                        <FaHeart className="w-5 h-5 text-red-500" />
+                    {isWishlisted ? (
+                        <FaHeart className="w-5 h-5 text-accent-1 group-hover/wishlist:text-white transition-colors duration-200" />
                     ) : (
-                        <FaRegHeart className="w-5 h-5 text-text-primary group-hover/wishlist:text-white" />
+                        <FaRegHeart className="w-5 h-5 text-text-primary group-hover/wishlist:text-white transition-colors duration-200" />
                     )}
                 </button>
 

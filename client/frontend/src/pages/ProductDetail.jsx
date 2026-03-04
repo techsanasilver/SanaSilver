@@ -1,20 +1,26 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { FiShoppingBag, FiHeart, FiChevronDown } from "react-icons/fi";
 import { FaHeart, FaStar } from "react-icons/fa";
 import ProductDetailSkeleton from "../components/products/ProductDetailSkeleton";
 import ProductReviews from "../components/products/ProductReviews";
 import { getProductBySlug, getProductVariants } from "../api/products.api";
 import { addToCart } from "../api/cart.api";
-import { addToWishlist, removeFromWishlist } from "../api/wishlist.api";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import { getImageUrl } from "../utils/image.util";
 import logger from "../utils/logger.util";
 
 const ProductDetail = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { refreshCart } = useCart();
+    const {
+        isInWishlist,
+        toggleWishlist,
+        isLoading: isWishlistLoading,
+    } = useWishlist();
 
     const [product, setProduct] = useState(null);
     const [variants, setVariants] = useState([]);
@@ -23,8 +29,6 @@ const ProductDetail = () => {
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isInWishlist, setIsInWishlist] = useState(false);
-    const [isWishlistLoading, setIsWishlistLoading] = useState(false);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
     const [activeTab, setActiveTab] = useState("description");
     const [expandedSections, setExpandedSections] = useState(["description"]);
@@ -51,7 +55,25 @@ const ProductDetail = () => {
                     if (variantsRes.data?.success) {
                         const variantData = variantsRes.data.data;
                         setVariants(variantData);
-                        // Auto-select first in-stock variant
+
+                        // Priority order for variant selection:
+                        // 1. URL param variantId (from wishlist/share)
+                        // 2. First in-stock variant
+                        // 3. First variant (if all out of stock)
+
+                        const urlVariantId = searchParams.get("variantId");
+
+                        if (urlVariantId) {
+                            const urlVariant = variantData.find(
+                                (v) => v._id === urlVariantId,
+                            );
+                            if (urlVariant) {
+                                setSelectedVariant(urlVariant);
+                                return;
+                            }
+                        }
+
+                        // Fallback: Auto-select first in-stock variant
                         const firstAvailable = variantData.find(
                             (v) => v.stockQuantity > 0,
                         );
@@ -127,19 +149,15 @@ const ProductDetail = () => {
 
     // Handle wishlist toggle
     const handleWishlistToggle = async () => {
+        if (!selectedVariant) {
+            logger.warn("No variant selected for wishlist");
+            return;
+        }
+
         try {
-            setIsWishlistLoading(true);
-            if (isInWishlist) {
-                await removeFromWishlist(product._id);
-                setIsInWishlist(false);
-            } else {
-                await addToWishlist(product._id);
-                setIsInWishlist(true);
-            }
+            await toggleWishlist(product._id, selectedVariant._id);
         } catch (err) {
             logger.error("Wishlist toggle failed:", err);
-        } finally {
-            setIsWishlistLoading(false);
         }
     };
 
@@ -448,10 +466,14 @@ const ProductDetail = () => {
 
                             <button
                                 onClick={handleWishlistToggle}
-                                disabled={isWishlistLoading}
+                                disabled={!selectedVariant || isWishlistLoading}
                                 className="p-3 border border-divider rounded-sm hover:border-text-secondary hover:bg-background-secondary transition-colors"
                             >
-                                {isInWishlist ? (
+                                {selectedVariant &&
+                                isInWishlist(
+                                    product._id,
+                                    selectedVariant._id,
+                                ) ? (
                                     <FaHeart className="w-5 h-5 text-accent-1" />
                                 ) : (
                                     <FiHeart className="w-5 h-5" />

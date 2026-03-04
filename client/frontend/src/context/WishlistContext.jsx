@@ -1,7 +1,6 @@
 /**
- * Wishlist Context
- * Global state management for wishlist
- * Syncs with backend and localStorage
+ * Data Structure:
+ * - items: [{ productId: {...}, variantId: {...}, addedAt: Date }]
  */
 
 import React, { createContext, useContext, useState, useEffect } from "react";
@@ -9,6 +8,7 @@ import {
     getWishlist,
     addToWishlist as addToWishlistAPI,
     removeFromWishlist as removeFromWishlistAPI,
+    clearWishlist as clearWishlistAPI,
 } from "../api/wishlist.api";
 import { useAuth } from "./AuthContext";
 import logger from "../utils/logger.util";
@@ -30,44 +30,34 @@ export const WishlistProvider = ({ children }) => {
     const [error, setError] = useState(null);
 
     /**
-     * Load wishlist from backend or localStorage
+     * Load wishlist from backend
      */
     useEffect(() => {
         const loadWishlist = async () => {
             if (authLoading) return; // Wait for auth to initialize
 
+            // Clear wishlist if user is not authenticated
+            if (!isAuthenticated) {
+                setWishlist([]);
+                return;
+            }
+
             try {
                 setIsLoading(true);
+                setError(null);
 
-                if (isAuthenticated) {
-                    // Load from backend
-                    const response = await getWishlist();
-                    const wishlistData = response.data?.items || [];
-                    setWishlist(wishlistData);
+                // Load from backend - returns populated items
+                const response = await getWishlist();
+                const wishlistData = response.data?.data?.items || [];
+                setWishlist(wishlistData);
 
-                    // Sync to localStorage
-                    localStorage.setItem(
-                        "wishlist",
-                        JSON.stringify(wishlistData),
-                    );
-
-                    logger.info("Wishlist loaded from backend", {
-                        itemCount: wishlistData.length,
-                    });
-                } else {
-                    // Load from localStorage for guest users
-                    const storedWishlist = localStorage.getItem("wishlist");
-                    if (storedWishlist) {
-                        const wishlistData = JSON.parse(storedWishlist);
-                        setWishlist(wishlistData);
-                        logger.info("Wishlist loaded from localStorage", {
-                            itemCount: wishlistData.length,
-                        });
-                    }
-                }
+                logger.info("Wishlist loaded from backend", {
+                    itemCount: wishlistData.length,
+                });
             } catch (err) {
                 logger.error("Failed to load wishlist:", err);
                 setError("Failed to load wishlist");
+                setWishlist([]);
             } finally {
                 setIsLoading(false);
             }
@@ -77,120 +67,205 @@ export const WishlistProvider = ({ children }) => {
     }, [isAuthenticated, authLoading]);
 
     /**
-     * Add item to wishlist
+     * Add item to wishlist (requires authentication)
+     * @param {string} productId - Product ID
+     * @param {string} variantId - Variant ID
      */
-    const addToWishlist = async (productId) => {
+    const addToWishlist = async (productId, variantId) => {
+        // Require authentication
+        if (!isAuthenticated) {
+            logger.warn("Add to wishlist attempted without authentication");
+            setError("Please log in to add items to wishlist");
+            return false;
+        }
+
+        // Optimistic update - add placeholder item immediately
+        const placeholderItem = {
+            productId,
+            variantId,
+            addedAt: new Date().toISOString(),
+            _optimistic: true, // Mark as optimistic
+        };
+        setWishlist((prev) => [...prev, placeholderItem]);
+
         try {
-            setIsLoading(true);
             setError(null);
 
-            if (isAuthenticated) {
-                // Add to backend
-                const response = await addToWishlistAPI(productId);
-                const updatedWishlist = response.data?.items || [];
-                setWishlist(updatedWishlist);
-                localStorage.setItem(
-                    "wishlist",
-                    JSON.stringify(updatedWishlist),
-                );
+            // Add to backend - will return populated data
+            const response = await addToWishlistAPI(productId, variantId);
+            const updatedWishlist = response.data?.data?.items || [];
+            setWishlist(updatedWishlist);
 
-                logger.info("Item added to wishlist", { productId });
-            } else {
-                // Add to localStorage for guest
-                if (!wishlist.includes(productId)) {
-                    const updatedWishlist = [...wishlist, productId];
-                    setWishlist(updatedWishlist);
-                    localStorage.setItem(
-                        "wishlist",
-                        JSON.stringify(updatedWishlist),
-                    );
-
-                    logger.info("Item added to guest wishlist", { productId });
-                }
-            }
-
+            logger.info("Item added to wishlist", { productId, variantId });
             return true;
         } catch (err) {
+            // Rollback optimistic update on error
+            setWishlist((prev) =>
+                prev.filter(
+                    (item) =>
+                        !(
+                            item.productId === productId &&
+                            item.variantId === variantId &&
+                            item._optimistic
+                        ),
+                ),
+            );
+
             logger.error("Failed to add to wishlist:", err);
             setError(
                 err.response?.data?.message || "Failed to add to wishlist",
             );
             return false;
-        } finally {
-            setIsLoading(false);
         }
     };
 
     /**
-     * Remove item from wishlist
+     * Remove item from wishlist (requires authentication)
+     * @param {string} productId - Product ID
+     * @param {string} variantId - Variant ID
      */
-    const removeFromWishlist = async (productId) => {
+    const removeFromWishlist = async (productId, variantId) => {
+        // Require authentication
+        if (!isAuthenticated) {
+            logger.warn(
+                "Remove from wishlist attempted without authentication",
+            );
+            setError("Please log in to manage your wishlist");
+            return false;
+        }
+
+        // Optimistic update - remove item immediately
+        const previousWishlist = [...wishlist];
+        setWishlist((prev) =>
+            prev.filter((item) => {
+                const itemProductId =
+                    typeof item.productId === "object"
+                        ? item.productId._id
+                        : item.productId;
+                const itemVariantId =
+                    typeof item.variantId === "object"
+                        ? item.variantId._id
+                        : item.variantId;
+
+                return !(
+                    itemProductId === productId && itemVariantId === variantId
+                );
+            }),
+        );
+
         try {
-            setIsLoading(true);
             setError(null);
 
-            if (isAuthenticated) {
-                // Remove from backend
-                const response = await removeFromWishlistAPI(productId);
-                const updatedWishlist = response.data?.items || [];
-                setWishlist(updatedWishlist);
-                localStorage.setItem(
-                    "wishlist",
-                    JSON.stringify(updatedWishlist),
-                );
+            // Remove from backend
+            const response = await removeFromWishlistAPI(productId, variantId);
+            const updatedWishlist = response.data?.data?.items || [];
+            setWishlist(updatedWishlist);
 
-                logger.info("Item removed from wishlist", { productId });
-            } else {
-                // Remove from localStorage
-                const updatedWishlist = wishlist.filter(
-                    (id) => id !== productId,
-                );
-                setWishlist(updatedWishlist);
-                localStorage.setItem(
-                    "wishlist",
-                    JSON.stringify(updatedWishlist),
-                );
-
-                logger.info("Item removed from guest wishlist", { productId });
-            }
-
+            logger.info("Item removed from wishlist", { productId, variantId });
             return true;
         } catch (err) {
+            // Rollback optimistic update on error
+            setWishlist(previousWishlist);
+
             logger.error("Failed to remove from wishlist:", err);
             setError(
                 err.response?.data?.message || "Failed to remove from wishlist",
             );
             return false;
-        } finally {
-            setIsLoading(false);
         }
     };
 
     /**
-     * Check if product is in wishlist
+     * Check if product+variant combo is in wishlist
+     * @param {string} productId - Product ID
+     * @param {string} variantId - Variant ID (optional, checks any variant if not provided)
      */
-    const isInWishlist = (productId) => {
-        return wishlist.includes(productId);
-    };
+    const isInWishlist = (productId, variantId = null) => {
+        // Return false if not authenticated
+        if (!isAuthenticated) {
+            return false;
+        }
 
-    /**
-     * Toggle product in wishlist
-     */
-    const toggleWishlist = async (productId) => {
-        if (isInWishlist(productId)) {
-            return await removeFromWishlist(productId);
+        if (variantId) {
+            // Check specific product+variant combo
+            return wishlist.some((item) => {
+                const itemProductId =
+                    typeof item.productId === "object"
+                        ? item.productId._id
+                        : item.productId;
+                const itemVariantId =
+                    typeof item.variantId === "object"
+                        ? item.variantId._id
+                        : item.variantId;
+
+                return (
+                    itemProductId === productId && itemVariantId === variantId
+                );
+            });
         } else {
-            return await addToWishlist(productId);
+            // Check if any variant of this product is wishlisted
+            return wishlist.some((item) => {
+                const itemProductId =
+                    typeof item.productId === "object"
+                        ? item.productId._id
+                        : item.productId;
+                return itemProductId === productId;
+            });
         }
     };
 
     /**
-     * Clear entire wishlist
+     * Toggle product+variant in wishlist (requires authentication)
+     * @param {string} productId - Product ID
+     * @param {string} variantId - Variant ID
      */
-    const clearWishlist = () => {
+    const toggleWishlist = async (productId, variantId) => {
+        // Require authentication
+        if (!isAuthenticated) {
+            logger.warn("Toggle wishlist attempted without authentication");
+            setError("Please log in to use wishlist");
+            return false;
+        }
+
+        if (isInWishlist(productId, variantId)) {
+            return await removeFromWishlist(productId, variantId);
+        } else {
+            return await addToWishlist(productId, variantId);
+        }
+    };
+
+    /**
+     * Clear entire wishlist (requires authentication)
+     */
+    const clearWishlist = async () => {
+        // Require authentication
+        if (!isAuthenticated) {
+            logger.warn("Clear wishlist attempted without authentication");
+            return false;
+        }
+
+        // Optimistic update - clear immediately
+        const previousWishlist = [...wishlist];
         setWishlist([]);
-        localStorage.removeItem("wishlist");
-        logger.info("Wishlist cleared");
+
+        try {
+            setError(null);
+
+            // Clear from backend
+            const response = await clearWishlistAPI();
+            const updatedWishlist = response.data?.data?.items || [];
+            setWishlist(updatedWishlist);
+
+            logger.info("Wishlist cleared");
+            return true;
+        } catch (err) {
+            // Rollback optimistic update on error
+            setWishlist(previousWishlist);
+
+            logger.error("Failed to clear wishlist:", err);
+            setError(err.response?.data?.message || "Failed to clear wishlist");
+            return false;
+        }
     };
 
     /**
@@ -200,16 +275,48 @@ export const WishlistProvider = ({ children }) => {
         return wishlist.length;
     };
 
+    /**
+     * Manually refetch wishlist from backend
+     * Useful for refreshing data when navigating to wishlist page
+     */
+    const refetchWishlist = async () => {
+        if (!isAuthenticated) {
+            setWishlist([]);
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const response = await getWishlist();
+            const wishlistData = response.data?.data?.items || [];
+            setWishlist(wishlistData);
+
+            logger.info("Wishlist refetched", {
+                itemCount: wishlistData.length,
+            });
+        } catch (err) {
+            logger.error("Failed to refetch wishlist:", err);
+            setError("Failed to load wishlist");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const value = {
         wishlist,
         isLoading,
         error,
+        isAuthenticated, // Expose auth state for UI decisions
+        wishlistCount: wishlist.length, // Direct count for easier access
         addToWishlist,
         removeFromWishlist,
         isInWishlist,
         toggleWishlist,
         clearWishlist,
         getWishlistCount,
+        refetchWishlist,
     };
 
     return (
