@@ -11,10 +11,10 @@ const API_PREFIX = "/cart";
 export const getCart = async (guestCartItems = []) => {
     try {
         const response = await axiosInstance.post(API_PREFIX, {
-            guestCart: guestCartItems,
+            items: guestCartItems,
         });
         logger.info("Cart fetched", {
-            itemCount: response.data?.items?.length,
+            itemCount: response.data?.data?.items?.length,
         });
         return response;
     } catch (error) {
@@ -26,18 +26,18 @@ export const getCart = async (guestCartItems = []) => {
 /**
  * Add item to cart
  * @param {string} productId - Product ID
+ * @param {string} variantId - Product variant ID
  * @param {number} quantity - Quantity
- * @param {object} variant - Product variant (optional)
  * @returns {Promise}
  */
-export const addToCart = async (productId, quantity = 1, variant = null) => {
+export const addToCart = async (productId, variantId, quantity = 1) => {
     try {
         const response = await axiosInstance.post(`${API_PREFIX}/add`, {
             productId,
+            variantId,
             quantity,
-            variant,
         });
-        logger.info("Item added to cart", { productId, quantity });
+        logger.info("Item added to cart", { productId, variantId, quantity });
         return response;
     } catch (error) {
         logger.error("Failed to add to cart:", error);
@@ -48,16 +48,18 @@ export const addToCart = async (productId, quantity = 1, variant = null) => {
 /**
  * Update cart item quantity
  * @param {string} productId - Product ID
+ * @param {string} variantId - Product variant ID
  * @param {number} quantity - New quantity
  * @returns {Promise}
  */
-export const updateCartItem = async (productId, quantity) => {
+export const updateCartItem = async (productId, variantId, quantity) => {
     try {
         const response = await axiosInstance.put(`${API_PREFIX}/update`, {
             productId,
+            variantId,
             quantity,
         });
-        logger.info("Cart item updated", { productId, quantity });
+        logger.info("Cart item updated", { productId, variantId, quantity });
         return response;
     } catch (error) {
         logger.error("Failed to update cart item:", error);
@@ -68,14 +70,15 @@ export const updateCartItem = async (productId, quantity) => {
 /**
  * Remove item from cart
  * @param {string} productId - Product ID
+ * @param {string} variantId - Product variant ID
  * @returns {Promise}
  */
-export const removeFromCart = async (productId) => {
+export const removeFromCart = async (productId, variantId) => {
     try {
         const response = await axiosInstance.delete(`${API_PREFIX}/remove`, {
-            data: { productId },
+            data: { productId, variantId },
         });
-        logger.info("Item removed from cart", { productId });
+        logger.info("Item removed from cart", { productId, variantId });
         return response;
     } catch (error) {
         logger.error("Failed to remove from cart:", error);
@@ -94,6 +97,43 @@ export const clearCart = async () => {
         return response;
     } catch (error) {
         logger.error("Failed to clear cart:", error);
+        throw error;
+    }
+};
+
+/**
+ * Merge guest cart with user cart on login
+ * @param {array} guestCartItems - Guest cart items
+ * @returns {Promise}
+ */
+export const mergeCart = async (guestCartItems = []) => {
+    try {
+        const response = await axiosInstance.post(`${API_PREFIX}/merge`, {
+            guestCartItems,
+        });
+        logger.info("Guest cart merged", {
+            itemCount: guestCartItems.length,
+        });
+        return response;
+    } catch (error) {
+        logger.error("Failed to merge cart:", error);
+        throw error;
+    }
+};
+
+/**
+ * Get cart item count
+ * @returns {Promise}
+ */
+export const getCartCount = async () => {
+    try {
+        const response = await axiosInstance.get(`${API_PREFIX}/count`);
+        logger.info("Cart count fetched", {
+            count: response.data?.data?.count,
+        });
+        return response;
+    } catch (error) {
+        logger.error("Failed to fetch cart count:", error);
         throw error;
     }
 };

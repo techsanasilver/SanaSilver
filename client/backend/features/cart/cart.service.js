@@ -2,6 +2,7 @@ import Cart from "./cart.model.js";
 import Product from "../products/product.model.js";
 import ProductVariant from "../products/product-variant.model.js";
 import logger from "../../shared/utils/logger.util.js";
+import { getImageVariants } from "../../shared/utils/cloudinary.util.js";
 
 /**
  * Get or create cart for user
@@ -31,11 +32,11 @@ export const getCartWithDetails = async (userId) => {
         const cart = await Cart.findOne({ userId })
             .populate({
                 path: "items.productId",
-                select: "name slug images isActive",
+                select: "name slug images isActive minPrice",
             })
             .populate({
                 path: "items.variantId",
-                select: "attributes price stockQuantity isActive images",
+                select: "sku variantName attributes sellingPrice mrp stockQuantity isActive images weight dimensions",
             });
 
         if (!cart) {
@@ -90,6 +91,20 @@ export const getCartWithDetails = async (userId) => {
         if (hasChanges) {
             cart.items = validItems;
             await cart.save();
+        }
+
+        // Generate image URLs for product and variant images
+        for (const item of cart.items) {
+            if (item.productId?.images) {
+                for (const img of item.productId.images) {
+                    img.urls = getImageVariants(img.publicId);
+                }
+            }
+            if (item.variantId?.images) {
+                for (const img of item.variantId.images) {
+                    img.urls = getImageVariants(img.publicId);
+                }
+            }
         }
 
         return cart;
