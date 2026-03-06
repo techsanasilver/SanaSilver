@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { FiShoppingBag, FiHeart, FiChevronDown } from "react-icons/fi";
+import {
+    FiShoppingBag,
+    FiHeart,
+    FiChevronDown,
+    FiMinus,
+    FiPlus,
+} from "react-icons/fi";
 import { FaHeart, FaStar } from "react-icons/fa";
 import ProductDetailSkeleton from "../components/products/ProductDetailSkeleton";
 import ProductReviews from "../components/products/ProductReviews";
 import { getProductBySlug, getProductVariants } from "../api/products.api";
-import { addToCart } from "../api/cart.api";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { getImageUrl } from "../utils/image.util";
@@ -15,7 +20,7 @@ const ProductDetail = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { refreshCart } = useCart();
+    const { addToCart: addToCartContext } = useCart();
     const {
         isInWishlist,
         toggleWishlist,
@@ -169,17 +174,33 @@ const ProductDetail = () => {
         }
 
         if (selectedVariant.stockQuantity < quantity) {
-            logger.warn("Insufficient stock");
+            logger.warn("Insufficient stock", {
+                available: selectedVariant.stockQuantity,
+                requested: quantity,
+            });
+            // TODO: Show notification
             return;
         }
 
         try {
             setIsAddingToCart(true);
-            await addToCart(product._id, quantity, selectedVariant._id);
-            await refreshCart();
-            logger.info("Added to cart successfully");
+            const success = await addToCartContext(
+                product._id,
+                selectedVariant._id,
+                quantity,
+            );
+
+            if (success) {
+                logger.info("Added to cart successfully", {
+                    productId: product._id,
+                    variantId: selectedVariant._id,
+                    quantity,
+                });
+                // TODO: Show success notification
+            }
         } catch (err) {
             logger.error("Failed to add to cart:", err);
+            // TODO: Show error notification
         } finally {
             setIsAddingToCart(false);
         }
@@ -421,9 +442,9 @@ const ProductDetail = () => {
                                                     Math.max(1, quantity - 1),
                                                 )
                                             }
-                                            className="w-8 h-8 flex items-center justify-center border border-divider rounded-sm hover:bg-background-secondary transition-colors text-lg xl:text-xl"
+                                            className="w-8 h-8 flex items-center justify-center border border-divider rounded-sm hover:bg-background-secondary transition-colors"
                                         >
-                                            −
+                                            <FiMinus className="w-3.5 h-3.5" />
                                         </button>
                                         <span className="w-10 h-8 flex items-center justify-center text-sm xl:text-base font-medium text-text-primary">
                                             {quantity}
@@ -437,9 +458,9 @@ const ProductDetail = () => {
                                                     ),
                                                 )
                                             }
-                                            className="w-8 h-8 flex items-center justify-center border border-divider rounded-sm hover:bg-background-secondary transition-colors text-lg xl:text-xl"
+                                            className="w-8 h-8 flex items-center justify-center border border-divider rounded-sm hover:bg-background-secondary transition-colors"
                                         >
-                                            +
+                                            <FiPlus className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
                                 </div>

@@ -17,7 +17,7 @@ const Navbar = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
     const { categories } = useCategories();
-    const { cart } = useCart();
+    const { getCartCount } = useCart();
     const { wishlistCount } = useWishlist();
     const [searchQuery, setSearchQuery] = useState("");
     const [showSearchBar, setShowSearchBar] = useState(false);
@@ -82,8 +82,7 @@ const Navbar = () => {
         }
     };
 
-    const cartItemsCount =
-        cart?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
+    const cartItemsCount = getCartCount();
 
     // Dropdown menu items
     const shopMenu = {

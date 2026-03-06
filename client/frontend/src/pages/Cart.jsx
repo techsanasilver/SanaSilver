@@ -1,145 +1,184 @@
-/**
- * Cart Page
- * Shopping cart with items, quantities, pricing
- */
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { FiShoppingBag } from "react-icons/fi";
 import { useCart } from "../context/CartContext";
-import Loader from "../components/common/Loader";
+import CartCard from "../components/cart/CartCard";
+import CartSkeleton from "../components/cart/CartSkeleton";
 import logger from "../utils/logger.util";
 
 const Cart = () => {
-    const { cart, loading } = useCart();
+    const { cart, isLoading, getCartCount, getCartTotal } = useCart();
+    const [notification, setNotification] = useState(null);
 
     useEffect(() => {
-        logger.info("Cart page loaded");
-    }, []);
+        logger.info("Cart page loaded", { itemCount: cart.items.length });
+    }, [cart.items.length]);
 
-    if (loading) {
-        return <Loader />;
+    // Handle quantity adjustment notifications
+    const handleQuantityAdjusted = (info) => {
+        if (info.error) {
+            // Validation error
+            setNotification({
+                type: "error",
+                message: info.error,
+            });
+        } else if (info.actual !== info.requested) {
+            // Backend adjusted quantity
+            setNotification({
+                type: "warning",
+                message: `Quantity for "${info.productName}" adjusted to ${info.actual} (limited stock)`,
+            });
+        }
+
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => setNotification(null), 5000);
+    };
+
+    // Format price
+    const formatPrice = (price) =>
+        new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
+        }).format(price);
+
+    // Show skeleton while loading
+    if (isLoading) {
+        return <CartSkeleton />;
     }
 
     const isEmpty = !cart || !cart.items || cart.items.length === 0;
 
+    // Empty cart state
     if (isEmpty) {
         return (
-            <div className="container mx-auto px-4 py-16 text-center">
-                <div className="max-w-md mx-auto">
-                    <svg
-                        className="w-24 h-24 mx-auto mb-4 text-neutral-300"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                        />
-                    </svg>
-                    <h2 className="text-2xl font-bold text-neutral-800 mb-2">
+            <div className="min-h-[calc(100vh-4rem)] bg-background-primary flex items-center justify-center px-4">
+                <div className="max-w-md mx-auto text-center">
+                    <FiShoppingBag className="w-24 h-24 mx-auto mb-6 text-text-secondary/30 stroke-1" />
+                    <h2 className="text-2xl lg:text-3xl font-light text-text-primary mb-3">
                         Your cart is empty
                     </h2>
-                    <p className="text-neutral-600 mb-6">
-                        Add some products to get started!
+                    <p className="text-text-secondary mb-8">
+                        Discover our exquisite collection of silver jewelry
                     </p>
                     <Link
                         to="/shop"
-                        className="inline-block px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark"
+                        className="inline-block px-8 py-3 bg-text-primary text-white font-medium rounded-sm hover:bg-text-secondary transition-colors"
                     >
-                        Continue Shopping
+                        EXPLORE COLLECTION
                     </Link>
                 </div>
             </div>
         );
     }
 
-    return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+    const totalItems = getCartCount();
+    const subtotal = getCartTotal();
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Cart Items */}
-                <div className="lg:col-span-2">
-                    <div className="space-y-4">
-                        {cart.items.map((item) => (
-                            <div
-                                key={item._id}
-                                className="flex gap-4 p-4 border border-neutral-200 rounded-lg"
-                            >
-                                <div className="w-24 h-24 bg-neutral-100 rounded"></div>
-                                <div className="flex-1">
-                                    <h3 className="font-semibold">
-                                        Product Name
-                                    </h3>
-                                    <p className="text-sm text-neutral-600 mt-1">
-                                        Variant details
-                                    </p>
-                                    <div className="flex items-center gap-4 mt-2">
-                                        <div className="flex items-center border border-neutral-300 rounded">
-                                            <button className="px-3 py-1">
-                                                -
-                                            </button>
-                                            <span className="px-3 py-1 border-x border-neutral-300">
-                                                {item.quantity}
-                                            </span>
-                                            <button className="px-3 py-1">
-                                                +
-                                            </button>
-                                        </div>
-                                        <button className="text-sm text-red-600 hover:text-red-700">
-                                            Remove
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-lg">
-                                        ₹{item.price || 1000}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
+    return (
+        <div className="min-h-[calc(100vh-4rem)] bg-background-primary">
+            <div className="px-4 lg:px-8 xl:px-16 py-8 lg:py-12">
+                {/* Notification */}
+                {notification && (
+                    <div
+                        className={`mb-6 p-4 rounded-sm ${
+                            notification.type === "error"
+                                ? "bg-red-50 text-red-800 border border-red-200"
+                                : "bg-amber-50 text-amber-800 border border-amber-200"
+                        }`}
+                    >
+                        <p className="text-sm">{notification.message}</p>
                     </div>
+                )}
+
+                {/* Header */}
+                <div className="mb-8 lg:mb-12">
+                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-display text-text-primary mb-2">
+                        Shopping Cart
+                    </h1>
+                    <p className="text-sm lg:text-base text-text-secondary">
+                        {totalItems} {totalItems === 1 ? "item" : "items"}
+                    </p>
                 </div>
 
-                {/* Order Summary */}
-                <div className="lg:col-span-1">
-                    <div className="p-6 border border-neutral-200 rounded-lg sticky top-24">
-                        <h2 className="text-xl font-bold mb-4">
-                            Order Summary
-                        </h2>
-
-                        <div className="space-y-2 mb-4">
-                            <div className="flex justify-between text-sm">
-                                <span>Subtotal</span>
-                                <span>₹{cart.subtotal || 0}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span>Discount</span>
-                                <span className="text-green-600">
-                                    -₹{cart.discount || 0}
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span>Shipping</span>
-                                <span>₹{cart.shippingCost || 0}</span>
-                            </div>
-                            <div className="border-t border-neutral-200 pt-2 mt-2">
-                                <div className="flex justify-between font-bold text-lg">
-                                    <span>Total</span>
-                                    <span>₹{cart.total || 0}</span>
-                                </div>
-                            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                    {/* Cart Items Column */}
+                    <div className="lg:col-span-2">
+                        <div className="space-y-4">
+                            {cart.items.map((item, index) => (
+                                <CartCard
+                                    key={`${typeof item.productId === "object" ? item.productId._id : item.productId}-${typeof item.variantId === "object" ? item.variantId._id : item.variantId}`}
+                                    item={item}
+                                    onQuantityAdjusted={handleQuantityAdjusted}
+                                />
+                            ))}
                         </div>
 
-                        <Link
-                            to="/checkout"
-                            className="block w-full px-6 py-3 bg-primary text-white text-center font-medium rounded-lg hover:bg-primary-dark"
-                        >
-                            Proceed to Checkout
-                        </Link>
+                        {/* Add from Favourites Button */}
+                        <div className="mt-6">
+                            <Link
+                                to="/wishlist"
+                                className="inline-block px-8 py-3 bg-accent-1 text-sm text-text-primary-invert font-medium rounded-xs hover:bg-accent-1/90 transition-colors"
+                            >
+                                ADD FROM WISHLIST
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Order Summary Column */}
+                    <div className="lg:col-span-1">
+                        <div className="rounded-xs bg-[#f2efec] p-6 lg:sticky lg:top-24">
+                            <h2 className="text-xl font-medium text-text-primary mb-6">
+                                Order Summary
+                            </h2>
+
+                            {/* Summary Details */}
+                            <div className="space-y-4 mb-6">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-text-secondary">
+                                        Subtotal ({totalItems}{" "}
+                                        {totalItems === 1 ? "item" : "items"})
+                                    </span>
+                                    <span className="font-medium text-text-primary/70">
+                                        {formatPrice(subtotal)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-text-secondary">
+                                        Shipping
+                                    </span>
+                                    <span className="text-text-secondary">
+                                        Calculated at checkout
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="border-t border-neutral-200 my-6"></div>
+
+                            {/* Total */}
+                            <div className="flex justify-between mb-6">
+                                <span className="text-lg font-medium text-text-primary/70">
+                                    Total
+                                </span>
+                                <span className="text-2xl font-semibold text-text-primary/70">
+                                    {formatPrice(subtotal)}
+                                </span>
+                            </div>
+
+                            {/* Checkout Button */}
+                            <Link
+                                to="/checkout"
+                                className="block w-full px-6 py-4 bg-text-primary text-white text-center font-medium rounded-sm hover:bg-text-secondary transition-colors"
+                            >
+                                PROCEED TO CHECKOUT
+                            </Link>
+
+                            {/* Security & Info */}
+                            <div className="mt-6 text-xs text-text-secondary text-center">
+                                <p>Taxes and shipping calculated at checkout</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

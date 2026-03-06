@@ -4,7 +4,6 @@ import { FiShoppingBag, FiX } from "react-icons/fi";
 import { getImageUrl } from "../../utils/image.util";
 import { useWishlist } from "../../context/WishlistContext";
 import { useCart } from "../../context/CartContext";
-import { addToCart } from "../../api/cart.api";
 import logger from "../../utils/logger.util";
 
 /**
@@ -21,7 +20,7 @@ const WishlistProductCard = ({ item }) => {
         refetchWishlist,
         isLoading: isWishlistLoading,
     } = useWishlist();
-    const { refreshCart } = useCart();
+    const { addToCart } = useCart();
     const [isAddingToCart, setIsAddingToCart] = useState(false);
 
     // Extract product and variant data
@@ -88,15 +87,16 @@ const WishlistProductCard = ({ item }) => {
         try {
             setIsAddingToCart(true);
 
-            // Add to cart
-            await addToCart(productId, 1, variantId);
-            await refreshCart();
+            // Add to cart with correct signature: (productId, variantId, quantity)
+            const success = await addToCart(productId, variantId, 1);
 
-            // Remove from wishlist
-            await removeFromWishlist(productId, variantId);
-            await refetchWishlist();
+            if (success) {
+                // Remove from wishlist after successfully adding to cart
+                await removeFromWishlist(productId, variantId);
+                await refetchWishlist();
 
-            logger.info("Moved to cart", { productId, variantId });
+                logger.info("Moved to cart", { productId, variantId });
+            }
         } catch (error) {
             logger.error("Failed to move to cart:", error);
         } finally {

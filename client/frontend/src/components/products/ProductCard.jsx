@@ -5,15 +5,18 @@ import { FaRegHeart, FaHeart } from "react-icons/fa";
 
 import { getImageUrl } from "../../utils/image.util";
 import { useWishlist } from "../../context/WishlistContext";
+import { useCart } from "../../context/CartContext";
 import logger from "../../utils/logger.util";
 
 const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
     const [isHovered, setIsHovered] = useState(false);
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
     const {
         isInWishlist,
         toggleWishlist,
         isLoading: isWishlistLoading,
     } = useWishlist();
+    const { addToCart, isInCart } = useCart();
 
     // Get the first available (in-stock) variant or first variant
     const firstVariant = useMemo(() => {
@@ -32,6 +35,11 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
             ? isInWishlist(product._id, firstVariant._id)
             : false;
     }, [firstVariant, product._id, isInWishlist]);
+
+    // Check if this product+variant is in cart
+    const itemInCart = useMemo(() => {
+        return firstVariant ? isInCart(product._id, firstVariant._id) : false;
+    }, [firstVariant, product._id, isInCart]);
 
     // Get primary image or first image
     const primaryImage =
@@ -74,12 +82,42 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
         }
     };
 
-    // Handle quick add
-    const handleQuickAdd = (e) => {
+    // Handle quick add to cart
+    const handleQuickAdd = async (e) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if (!firstVariant || firstVariant.stockQuantity === 0) {
+            logger.warn("No stock available", {
+                productId: product._id,
+                variantId: firstVariant?._id,
+            });
+            return;
+        }
+
+        // If onQuickAdd callback exists (custom behavior), use it
         if (onQuickAdd) {
             onQuickAdd(product);
+            return;
+        }
+
+        // Otherwise, add to cart directly
+        setIsAddingToCart(true);
+        try {
+            const success = await addToCart(product._id, firstVariant._id, 1);
+
+            if (success) {
+                logger.info("Added to cart from ProductCard", {
+                    productId: product._id,
+                    variantId: firstVariant._id,
+                });
+                // TODO: Show success notification when NotificationContext is implemented
+            }
+        } catch (error) {
+            logger.error("Failed to add to cart:", error);
+            // TODO: Show error notification
+        } finally {
+            setIsAddingToCart(false);
         }
     };
 
@@ -146,9 +184,23 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
                 >
                     <button
                         onClick={handleQuickAdd}
-                        className="w-full bg-background-secondary text-text-primary py-3 px-4 flex items-center justify-center gap-2 hover:bg-accent-1 hover:text-white transition-colors duration-200"
+                        disabled={
+                            !firstVariant ||
+                            firstVariant.stockQuantity === 0 ||
+                            isAddingToCart
+                        }
+                        className="w-full bg-background-secondary text-text-primary py-3 px-4 flex items-center justify-center gap-2 hover:bg-accent-1 hover:text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <span className="text-sm font-medium">QUICK ADD</span>
+                        <span className="text-sm font-medium">
+                            {isAddingToCart
+                                ? "ADDING..."
+                                : !firstVariant ||
+                                    firstVariant.stockQuantity === 0
+                                  ? "OUT OF STOCK"
+                                  : itemInCart
+                                    ? "ADD MORE"
+                                    : "ADD TO CART"}
+                        </span>
                         <FiShoppingBag className="w-5 h-5" />
                     </button>
                 </div>
