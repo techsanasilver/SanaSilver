@@ -156,6 +156,17 @@ export const validateGuestCartItems = async (items) => {
             );
 
             if (adjustedQuantity > 0) {
+                // Generate image URLs for product and variant
+                const productImages = product.images || [];
+                for (const img of productImages) {
+                    img.urls = getImageVariants(img.publicId);
+                }
+
+                const variantImages = variant.images || [];
+                for (const img of variantImages) {
+                    img.urls = getImageVariants(img.publicId);
+                }
+
                 validatedItems.push({
                     productId: item.productId,
                     variantId: item.variantId,
@@ -164,14 +175,14 @@ export const validateGuestCartItems = async (items) => {
                         _id: product._id,
                         name: product.name,
                         slug: product.slug,
-                        images: product.images,
+                        images: productImages,
                     },
                     variant: {
                         _id: variant._id,
                         attributes: variant.attributes,
                         sellingPrice: variant.sellingPrice,
                         stockQuantity: variant.stockQuantity,
-                        images: variant.images,
+                        images: variantImages,
                     },
                 });
             }

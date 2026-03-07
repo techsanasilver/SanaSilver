@@ -42,8 +42,13 @@ export const CartProvider = ({ children }) => {
         for (const item of items) {
             totalQuantity += item.quantity;
             // Calculate price from populated variant data
-            if (item.variantId?.sellingPrice) {
-                totalPrice += item.variantId.sellingPrice * item.quantity;
+            // Handle both populated (variantId is object) and separate variant field
+            const variant = item.variantId?.sellingPrice
+                ? item.variantId
+                : item.variant;
+
+            if (variant?.sellingPrice) {
+                totalPrice += variant.sellingPrice * item.quantity;
             }
         }
 
@@ -93,24 +98,67 @@ export const CartProvider = ({ children }) => {
                                 ? cartData
                                 : cartData.items || [];
 
-                            const normalizedCart = {
-                                items,
-                                totalQuantity: items.reduce(
-                                    (sum, item) => sum + item.quantity,
-                                    0,
-                                ),
-                                totalPrice: 0, // Guest cart doesn't have prices
-                            };
+                            if (items.length > 0) {
+                                // Fetch product details from backend
+                                const response = await getCart(items);
+                                const validatedCart = response.data.data || {
+                                    items: [],
+                                };
 
-                            setCart(normalizedCart);
-                            logger.info("Cart loaded from localStorage", {
-                                itemCount: items.length,
-                            });
+                                // Calculate totals
+                                const totals = calculateTotals(
+                                    validatedCart.items,
+                                );
+
+                                const normalizedCart = {
+                                    items: validatedCart.items,
+                                    ...totals,
+                                };
+
+                                setCart(normalizedCart);
+
+                                // Update localStorage with validated items
+                                const updatedGuestCart =
+                                    validatedCart.items.map((item) => ({
+                                        productId:
+                                            typeof item.productId === "object"
+                                                ? item.productId._id
+                                                : item.productId,
+                                        variantId:
+                                            typeof item.variantId === "object"
+                                                ? item.variantId._id
+                                                : item.variantId,
+                                        quantity: item.quantity,
+                                    }));
+                                localStorage.setItem(
+                                    "cart",
+                                    JSON.stringify(updatedGuestCart),
+                                );
+
+                                logger.info(
+                                    "Guest cart loaded and validated from backend",
+                                    {
+                                        itemCount: validatedCart.items.length,
+                                    },
+                                );
+                            } else {
+                                setCart({
+                                    items: [],
+                                    totalQuantity: 0,
+                                    totalPrice: 0,
+                                });
+                            }
                         } catch (err) {
                             logger.error(
-                                "Failed to parse localStorage cart:",
+                                "Failed to load guest cart from backend:",
                                 err,
                             );
+                            // Fallback to empty cart
+                            setCart({
+                                items: [],
+                                totalQuantity: 0,
+                                totalPrice: 0,
+                            });
                             localStorage.removeItem("cart");
                         }
                     }
@@ -229,22 +277,41 @@ export const CartProvider = ({ children }) => {
                 });
             } else {
                 // Add to localStorage cart for guest
+                const storedCart = localStorage.getItem("cart");
+                let currentItems = [];
+
+                if (storedCart) {
+                    try {
+                        const cartData = JSON.parse(storedCart);
+                        currentItems = Array.isArray(cartData)
+                            ? cartData
+                            : cartData.items || [];
+                    } catch (err) {
+                        logger.error("Failed to parse localStorage cart:", err);
+                    }
+                }
+
+                // Add new item
                 const newItem = {
                     productId,
                     variantId,
                     quantity,
-                    addedAt: new Date().toISOString(),
                 };
 
-                const updatedItems = [...cart.items, newItem];
-                const updatedCart = {
-                    items: updatedItems,
-                    totalQuantity: cart.totalQuantity + quantity,
-                    totalPrice: 0, // Guest cart doesn't calculate prices
-                };
-
-                setCart(updatedCart);
+                const updatedItems = [...currentItems, newItem];
                 localStorage.setItem("cart", JSON.stringify(updatedItems));
+
+                // Fetch full product details from backend
+                const response = await getCart(updatedItems);
+                const validatedCart = response.data.data || { items: [] };
+
+                // Calculate totals
+                const totals = calculateTotals(validatedCart.items);
+
+                setCart({
+                    items: validatedCart.items,
+                    ...totals,
+                });
 
                 logger.info("Item added to guest cart", {
                     productId,
@@ -393,24 +460,40 @@ export const CartProvider = ({ children }) => {
                     requestedQuantity: quantity,
                 };
             } else {
-                // Guest users - no stock validation possible
-                const updatedItems = cart.items.map((item) =>
+                // Guest users - update in localStorage and fetch updated details
+                const storedCart = localStorage.getItem("cart");
+                let currentItems = [];
+
+                if (storedCart) {
+                    try {
+                        const cartData = JSON.parse(storedCart);
+                        currentItems = Array.isArray(cartData)
+                            ? cartData
+                            : cartData.items || [];
+                    } catch (err) {
+                        logger.error("Failed to parse localStorage cart:", err);
+                    }
+                }
+
+                const updatedItems = currentItems.map((item) =>
                     item.productId === productId && item.variantId === variantId
                         ? { ...item, quantity }
                         : item,
                 );
 
-                const updatedCart = {
-                    items: updatedItems,
-                    totalQuantity: updatedItems.reduce(
-                        (sum, item) => sum + item.quantity,
-                        0,
-                    ),
-                    totalPrice: 0,
-                };
-
-                setCart(updatedCart);
                 localStorage.setItem("cart", JSON.stringify(updatedItems));
+
+                // Fetch full product details from backend
+                const response = await getCart(updatedItems);
+                const validatedCart = response.data.data || { items: [] };
+
+                // Calculate totals
+                const totals = calculateTotals(validatedCart.items);
+
+                setCart({
+                    items: validatedCart.items,
+                    ...totals,
+                });
 
                 logger.info("Guest cart item updated", {
                     productId,
@@ -480,7 +563,21 @@ export const CartProvider = ({ children }) => {
                 logger.info("Item removed from cart", { productId, variantId });
             } else {
                 // Remove from localStorage
-                const updatedItems = cart.items.filter(
+                const storedCart = localStorage.getItem("cart");
+                let currentItems = [];
+
+                if (storedCart) {
+                    try {
+                        const cartData = JSON.parse(storedCart);
+                        currentItems = Array.isArray(cartData)
+                            ? cartData
+                            : cartData.items || [];
+                    } catch (err) {
+                        logger.error("Failed to parse localStorage cart:", err);
+                    }
+                }
+
+                const updatedItems = currentItems.filter(
                     (item) =>
                         !(
                             item.productId === productId &&
@@ -488,17 +585,28 @@ export const CartProvider = ({ children }) => {
                         ),
                 );
 
-                const updatedCart = {
-                    items: updatedItems,
-                    totalQuantity: updatedItems.reduce(
-                        (sum, item) => sum + item.quantity,
-                        0,
-                    ),
-                    totalPrice: 0,
-                };
-
-                setCart(updatedCart);
                 localStorage.setItem("cart", JSON.stringify(updatedItems));
+
+                if (updatedItems.length > 0) {
+                    // Fetch full product details from backend
+                    const response = await getCart(updatedItems);
+                    const validatedCart = response.data.data || { items: [] };
+
+                    // Calculate totals
+                    const totals = calculateTotals(validatedCart.items);
+
+                    setCart({
+                        items: validatedCart.items,
+                        ...totals,
+                    });
+                } else {
+                    // Cart is empty
+                    setCart({
+                        items: [],
+                        totalQuantity: 0,
+                        totalPrice: 0,
+                    });
+                }
 
                 logger.info("Item removed from guest cart", {
                     productId,
