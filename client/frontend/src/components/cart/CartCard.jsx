@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { FiX, FiMinus, FiPlus, FiHeart } from "react-icons/fi";
 import { getImageUrl } from "../../utils/image.util";
 import { useCart } from "../../context/CartContext";
+import { useWishlist } from "../../context/WishlistContext";
+import { useAuth } from "../../context/AuthContext";
 import logger from "../../utils/logger.util";
 
 /**
@@ -14,8 +16,11 @@ import logger from "../../utils/logger.util";
  */
 const CartCard = ({ item, onQuantityAdjusted }) => {
     const { updateCartItem, removeFromCart } = useCart();
+    const { toggleWishlist, isInWishlist } = useWishlist();
+    const { isAuthenticated } = useAuth();
     const [isUpdating, setIsUpdating] = useState(false);
     const [isRemoving, setIsRemoving] = useState(false);
+    const [isMovingToWishlist, setIsMovingToWishlist] = useState(false);
     const [localQuantity, setLocalQuantity] = useState(item.quantity);
 
     // Extract product and variant data
@@ -118,10 +123,45 @@ const CartCard = ({ item, onQuantityAdjusted }) => {
         }
     };
 
-    // Handle move to wishlist (placeholder for now)
-    const handleMoveToWishlist = () => {
-        // TODO: Implement move to wishlist
-        logger.info("Move to wishlist", { productId, variantId });
+    // Handle move to wishlist
+    const handleMoveToWishlist = async () => {
+        if (!isAuthenticated) {
+            logger.warn("Move to wishlist attempted by guest user");
+            return;
+        }
+
+        setIsMovingToWishlist(true);
+        try {
+            // Check if already in wishlist
+            const alreadyInWishlist = isInWishlist(productId, variantId);
+
+            if (alreadyInWishlist) {
+                // Just remove from cart
+                await removeFromCart(productId, variantId);
+                logger.info("Removed from cart (already in wishlist)", {
+                    productId,
+                    variantId,
+                });
+            } else {
+                // Add to wishlist first
+                const success = await toggleWishlist(productId, variantId);
+
+                if (success) {
+                    // Then remove from cart
+                    await removeFromCart(productId, variantId);
+                    logger.info("Moved to wishlist and removed from cart", {
+                        productId,
+                        variantId,
+                    });
+                } else {
+                    logger.error("Failed to add to wishlist");
+                }
+            }
+        } catch (error) {
+            logger.error("Failed to move to wishlist:", error);
+        } finally {
+            setIsMovingToWishlist(false);
+        }
     };
 
     if (!product || !variant) {
@@ -179,7 +219,7 @@ const CartCard = ({ item, onQuantityAdjusted }) => {
                                     {variant.attributes.map((attr, index) => (
                                         <span
                                             key={index}
-                                            className="text-sm text-text-primart/70"
+                                            className="text-sm text-text-primary/70"
                                         >
                                             {attr.key}: {attr.value}
                                         </span>
@@ -247,12 +287,25 @@ const CartCard = ({ item, onQuantityAdjusted }) => {
                             {/* Move to Wishlist */}
                             <button
                                 onClick={handleMoveToWishlist}
-                                disabled={isRemoving}
-                                className="flex items-center gap-2 text-xs text-text-secondary hover:text-accent-1 transition-colors disabled:opacity-50 w-fit"
+                                disabled={
+                                    !isAuthenticated ||
+                                    isRemoving ||
+                                    isMovingToWishlist
+                                }
+                                className="flex items-center gap-2 text-xs text-text-secondary hover:text-accent-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-fit"
                                 aria-label="Move to wishlist"
+                                title={
+                                    !isAuthenticated
+                                        ? "Login to use wishlist"
+                                        : "Move to wishlist"
+                                }
                             >
                                 <FiHeart className="w-4 h-4" />
-                                <span>MOVE TO WISHLIST</span>
+                                <span>
+                                    {isMovingToWishlist
+                                        ? "MOVING..."
+                                        : "MOVE TO WISHLIST"}
+                                </span>
                             </button>
                         </div>
 
