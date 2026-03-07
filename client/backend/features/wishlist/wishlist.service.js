@@ -196,7 +196,8 @@ export const addItemToWishlist = async (userId, productId, variantId) => {
             `Item added to wishlist for user: ${userId}, product: ${productId}, variant: ${variantId}`,
         );
 
-        return wishlist;
+        // Return populated wishlist with details
+        return await getWishlistWithDetails(userId);
     } catch (error) {
         logger.error("Error adding item to wishlist:", error.message);
         throw error;
@@ -228,7 +229,8 @@ export const removeItemFromWishlist = async (userId, productId, variantId) => {
             );
         }
 
-        return wishlist;
+        // Return populated wishlist with details
+        return await getWishlistWithDetails(userId);
     } catch (error) {
         logger.error("Error removing item from wishlist:", error.message);
         throw error;
@@ -247,7 +249,8 @@ export const clearWishlist = async (userId) => {
 
         logger.info(`Wishlist cleared for user: ${userId}`);
 
-        return wishlist;
+        // Return populated wishlist with details (will be empty)
+        return await getWishlistWithDetails(userId);
     } catch (error) {
         logger.error("Error clearing wishlist:", error.message);
         throw error;

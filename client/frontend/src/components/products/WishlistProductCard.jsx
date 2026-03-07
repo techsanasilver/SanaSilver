@@ -15,11 +15,7 @@ import logger from "../../utils/logger.util";
 const WishlistProductCard = ({ item }) => {
     const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
-    const {
-        removeFromWishlist,
-        refetchWishlist,
-        isLoading: isWishlistLoading,
-    } = useWishlist();
+    const { removeFromWishlist, isLoading: isWishlistLoading } = useWishlist();
     const { addToCart } = useCart();
     const [isAddingToCart, setIsAddingToCart] = useState(false);
 
@@ -67,7 +63,6 @@ const WishlistProductCard = ({ item }) => {
 
         try {
             await removeFromWishlist(productId, variantId);
-            await refetchWishlist();
             logger.info("Removed from wishlist", { productId, variantId });
         } catch (error) {
             logger.error("Failed to remove from wishlist:", error);
@@ -93,7 +88,6 @@ const WishlistProductCard = ({ item }) => {
             if (success) {
                 // Remove from wishlist after successfully adding to cart
                 await removeFromWishlist(productId, variantId);
-                await refetchWishlist();
 
                 logger.info("Moved to cart", { productId, variantId });
             }

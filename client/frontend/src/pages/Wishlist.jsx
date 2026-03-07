@@ -7,14 +7,7 @@ import WishlistSkeleton from "../components/products/WishlistSkeleton";
 import logger from "../utils/logger.util";
 
 const Wishlist = () => {
-    const { wishlist, isLoading, clearWishlist, refetchWishlist } =
-        useWishlist();
-
-    useEffect(() => {
-        // Refetch wishlist when page mounts to ensure fresh data
-        refetchWishlist();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Only run on mount
+    const { wishlist, isLoading, clearWishlist } = useWishlist();
 
     useEffect(() => {
         logger.info("Wishlist page loaded", { itemCount: wishlist.length });
@@ -22,7 +15,6 @@ const Wishlist = () => {
 
     const handleClearAll = async () => {
         await clearWishlist();
-        await refetchWishlist();
     };
 
     // Show skeleton loader while loading
