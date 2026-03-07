@@ -109,7 +109,7 @@ export const clearCart = async () => {
 export const mergeCart = async (guestCartItems = []) => {
     try {
         const response = await axiosInstance.post(`${API_PREFIX}/merge`, {
-            guestCartItems,
+            items: guestCartItems,
         });
         logger.info("Guest cart merged", {
             itemCount: guestCartItems.length,

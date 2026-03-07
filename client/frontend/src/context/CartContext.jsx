@@ -56,7 +56,24 @@ export const CartProvider = ({ children }) => {
     };
 
     /**
+     * Reset cart and merge flag on logout
+     */
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            // User logged out - reset cart state and merge flag
+            setCart({
+                items: [],
+                totalQuantity: 0,
+                totalPrice: 0,
+            });
+            setHasMerged(false);
+            logger.info("Cart state reset on logout");
+        }
+    }, [isAuthenticated, authLoading]);
+
+    /**
      * Load cart from backend or localStorage
+     * Also handles merging guest cart on login
      */
     useEffect(() => {
         const loadCart = async () => {
@@ -66,7 +83,60 @@ export const CartProvider = ({ children }) => {
                 setIsLoading(true);
 
                 if (isAuthenticated) {
-                    // Load from backend
+                    // Check if there's a guest cart that needs merging first
+                    const storedCart = localStorage.getItem("cart");
+
+                    if (storedCart && !hasMerged) {
+                        try {
+                            // Parse guest cart
+                            const guestCartData = JSON.parse(storedCart);
+                            const guestItems = Array.isArray(guestCartData)
+                                ? guestCartData
+                                : guestCartData.items || [];
+
+                            if (guestItems.length > 0) {
+                                logger.info("Merging guest cart on login", {
+                                    itemCount: guestItems.length,
+                                });
+
+                                // Merge with backend
+                                const response = await mergeCartAPI(guestItems);
+                                const mergedCart = response.data.data;
+
+                                // Calculate totals
+                                const totals = calculateTotals(
+                                    mergedCart.items,
+                                );
+
+                                setCart({
+                                    items: mergedCart.items,
+                                    ...totals,
+                                });
+
+                                // Clear guest cart from localStorage
+                                localStorage.removeItem("cart");
+                                setHasMerged(true);
+
+                                logger.info("Guest cart merged successfully", {
+                                    finalItemCount: mergedCart.items.length,
+                                });
+
+                                setIsLoading(false);
+                                return;
+                            }
+                        } catch (mergeErr) {
+                            logger.error(
+                                "Failed to merge guest cart:",
+                                mergeErr,
+                            );
+                            // Clear guest cart and continue to load authenticated cart
+                            localStorage.removeItem("cart");
+                        }
+
+                        setHasMerged(true);
+                    }
+
+                    // Load authenticated user's cart from backend
                     const response = await getCart();
                     const cartData = response.data.data || {
                         userId: null,
@@ -173,64 +243,6 @@ export const CartProvider = ({ children }) => {
 
         loadCart();
     }, [isAuthenticated, authLoading]);
-
-    /**
-     * Merge guest cart with user cart on login
-     */
-    useEffect(() => {
-        const mergeGuestCart = async () => {
-            if (!isAuthenticated || authLoading || hasMerged) return;
-
-            try {
-                const storedCart = localStorage.getItem("cart");
-                if (!storedCart) {
-                    setHasMerged(true);
-                    return;
-                }
-
-                const guestCartData = JSON.parse(storedCart);
-                const guestItems = Array.isArray(guestCartData)
-                    ? guestCartData
-                    : guestCartData.items || [];
-
-                if (guestItems.length === 0) {
-                    setHasMerged(true);
-                    return;
-                }
-
-                logger.info("Merging guest cart", {
-                    itemCount: guestItems.length,
-                });
-
-                // Merge with backend
-                const response = await mergeCartAPI(guestItems);
-                const mergedCart = response.data.data;
-
-                // Calculate totals
-                const totals = calculateTotals(mergedCart.items);
-
-                setCart({
-                    items: mergedCart.items,
-                    ...totals,
-                });
-
-                // Clear guest cart from localStorage
-                localStorage.removeItem("cart");
-                setHasMerged(true);
-
-                logger.info("Guest cart merged successfully", {
-                    finalItemCount: mergedCart.items.length,
-                });
-            } catch (err) {
-                logger.error("Failed to merge guest cart:", err);
-                // Don't show error to user, just clear localStorage
-                localStorage.removeItem("cart");
-                setHasMerged(true);
-            }
-        };
-
-        mergeGuestCart();
-    }, [isAuthenticated, authLoading, hasMerged]);
 
     /**
      * Add item to cart
