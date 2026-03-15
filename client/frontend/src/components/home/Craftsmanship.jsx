@@ -37,7 +37,7 @@ const Craftsmanship = () => {
                 </p>
 
                 {/* Main Heading */}
-                <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif text-text-primary text-center mb-8 md:mb-12 max-w-4xl mx-auto px-4">
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-display font-medium text-text-primary text-center mb-8 md:mb-12 max-w-4xl mx-auto px-4">
                     Craftsmanship Beyond Compare
                 </h2>
 

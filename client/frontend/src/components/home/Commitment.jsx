@@ -37,7 +37,7 @@ const Commitment = () => {
                     <p className="text-xs md:text-sm uppercase tracking-widest mb-2 text-accent-2 ">
                         OUR COMMITMENT
                     </p>
-                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif text-text-primary mb-4">
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-display font-medium text-text-primary mb-4">
                         Building a Legacy of Excellence
                     </h2>
                 </div>

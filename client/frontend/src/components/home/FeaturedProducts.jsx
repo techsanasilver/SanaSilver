@@ -75,21 +75,21 @@ const FeaturedProducts = () => {
     }
 
     // Error state
-    if (error) {
-        return (
-            <section className="py-12 md:py-16 bg-background-primary">
-                <div className="container mx-auto px-4 text-center">
-                    <p className="text-danger">{error}</p>
-                    {/* <button
-                        onClick={fetchFeaturedProducts}
-                        className="mt-4 px-6 py-2 bg-accent-1 text-white rounded hover:bg-accent-2 transition-colors"
-                    >
-                        Try Again
-                    </button> */}
-                </div>
-            </section>
-        );
-    }
+    // if (error) {
+    //     return (
+    //         <section className="py-12 md:py-16 bg-background-primary">
+    //             <div className="container mx-auto px-4 text-center">
+    //                 <p className="text-danger">{error}</p>
+    //                 {/* <button
+    //                     onClick={fetchFeaturedProducts}
+    //                     className="mt-4 px-6 py-2 bg-accent-1 text-white rounded hover:bg-accent-2 transition-colors"
+    //                 >
+    //                     Try Again
+    //                 </button> */}
+    //             </div>
+    //         </section>
+    //     );
+    // }
 
     // No products found
     if (!products || products.length === 0) {
@@ -104,7 +104,7 @@ const FeaturedProducts = () => {
                     <p className="text-xs md:text-sm text-text-muted uppercase tracking-widest mb-2 text-accent-2">
                         FEATURED
                     </p>
-                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif text-text-primary mb-4">
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-display font-medium text-text-primary mb-4">
                         Signature Pieces
                     </h2>
                     <p className="text-sm md:text-base text-text-muted font-light max-w-2xl mx-auto">

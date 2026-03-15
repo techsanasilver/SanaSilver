@@ -72,7 +72,7 @@ const HomeDecorSection = () => {
                     <p className="text-xs md:text-sm text-text-muted uppercase tracking-widest text-accent-2">
                         COLLECTION
                     </p>
-                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif text-text-primary my-4">
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-display font-medium text-text-primary my-4">
                         Home Decor
                     </h2>
                     <p className="text-sm md:text-base text-text-muted font-light max-w-2xl mx-auto">

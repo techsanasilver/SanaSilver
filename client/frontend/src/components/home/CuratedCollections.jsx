@@ -81,7 +81,7 @@ const CuratedCollections = ({ limitToFour = true }) => {
                     <p className="text-xs md:text-sm text-text-muted uppercase tracking-widest mb-2 text-accent-2">
                         COLLECTIONS
                     </p>
-                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif text-text-primary mb-4">
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-display font-medium text-text-primary mb-4">
                         Curated for You
                     </h2>
                     <p className="text-sm md:text-base text-text-muted font-light max-w-2xl mx-auto">
@@ -123,7 +123,7 @@ const CuratedCollections = ({ limitToFour = true }) => {
                     </Carousel>
                 ) : (
                     // Centered Grid for 4 or fewer items
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-[80vw] mx-auto">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 md:max-w-[80vw] mx-auto">
                         {collections.map((collection) => (
                             <CollectionCard
                                 key={collection.name}
