@@ -7,6 +7,7 @@ import OurStory from "../components/home/OurStory";
 import Craftsmanship from "../components/home/Craftsmanship";
 import CuratedCollections from "../components/home/CuratedCollections";
 import Commitment from "../components/home/Commitment";
+import TheGuide from "../components/home/TheGuide";
 
 const Home = () => {
     return (
@@ -68,6 +69,13 @@ const Home = () => {
 
             <div className="w-full">
                 <div className="w-1/5 mx-auto border-b-3 border-divider lg:mb-8"></div>
+            </div>
+
+            {/* The Guide Section */}
+            <TheGuide />
+
+            <div className="w-full">
+                <div className="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
             </div>
         </div>
     );
