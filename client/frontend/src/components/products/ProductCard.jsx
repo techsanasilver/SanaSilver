@@ -283,13 +283,13 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
                     <img
                         src={imageUrl}
                         alt={primaryImage?.alt || product.name}
-                        className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-800 ease-out group-hover:scale-110"
                         loading="lazy"
                     />
 
                     {/* Quick Add Button - Slides up from bottom */}
                     <div
-                        className={`absolute bottom-0 left-0 right-0 transition-transform duration-500 ${
+                        className={`absolute bottom-0 left-0 right-0 transition-transform duration-800 ${
                             isHovered ? "translate-y-0" : "translate-y-full"
                         }`}
                     >
