@@ -149,7 +149,7 @@ const CollectionCard = ({ collection }) => {
         .replace(/[^a-z0-9-]/g, "");
 
     return (
-        <Link to={`/collection/${slug}`} className="group block">
+        <Link to={`/shop?collections=${slug}`} className="group block">
             {/* Image Container */}
             <div className="relative aspect-square overflow-hidden rounded-sm mb-2 bg-background-secondary">
                 {/* Placeholder or default image - you can customize this */}

@@ -14,9 +14,15 @@ const CategoryCard = ({ category }) => {
         ? getImageUrl(category.image, "medium")
         : "/placeholder-category.jpg";
 
+    // Build shop link using query params
+    // If category has a parent, treat it as a subcategory filter; otherwise category filter
+    const shopLink = category.parent
+        ? `/shop?subcategory=${category.slug}`
+        : `/shop?category=${category.slug}`;
+
     return (
         <Link
-            to={`/shop/${category.slug}`}
+            to={shopLink}
             className="block group"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
