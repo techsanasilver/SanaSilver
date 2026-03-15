@@ -8,6 +8,7 @@ import Craftsmanship from "../components/home/Craftsmanship";
 import CuratedCollections from "../components/home/CuratedCollections";
 import Commitment from "../components/home/Commitment";
 import TheGuide from "../components/home/TheGuide";
+import FAQ from "../components/home/FAQ";
 
 const Home = () => {
     return (
@@ -77,6 +78,9 @@ const Home = () => {
             <div className="w-full">
                 <div className="w-1/5 mx-auto border-b-3 border-divider lg:mt-16"></div>
             </div>
+
+            {/* FAQ Section */}
+            <FAQ />
         </div>
     );
 };
