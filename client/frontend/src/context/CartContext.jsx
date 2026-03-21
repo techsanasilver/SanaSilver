@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+    createContext,
+    useContext,
+    useState,
+    useEffect,
+    useRef,
+} from "react";
 import {
     getCart,
     addToCart as addToCartAPI,
@@ -8,6 +14,7 @@ import {
     mergeCart as mergeCartAPI,
     getCartCount as getCartCountAPI,
 } from "../api/cart.api";
+import { applyCoupon as applyCouponAPI } from "../api/coupon.api";
 import { useAuth } from "./AuthContext";
 import logger from "../utils/logger.util";
 
@@ -31,6 +38,13 @@ export const CartProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [hasMerged, setHasMerged] = useState(false);
+
+    // Coupon state
+    const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, description, discountType, discountValue, discountAmount, finalAmount }
+    const [couponLoading, setCouponLoading] = useState(false);
+    const [couponError, setCouponError] = useState(null);
+    // Track last applied code so we can silently refresh on cart changes
+    const appliedCouponCodeRef = useRef(null);
 
     /**
      * Calculate cart totals
@@ -56,17 +70,116 @@ export const CartProvider = ({ children }) => {
     };
 
     /**
+     * Build cart items payload for coupon API
+     */
+    const buildCouponCartItems = (items) => {
+        return items
+            .filter((item) => !item._isPlaceholder)
+            .map((item) => ({
+                price:
+                    (item.variantId?.sellingPrice
+                        ? item.variantId
+                        : item.variant
+                    )?.sellingPrice || 0,
+                quantity: item.quantity,
+            }));
+    };
+
+    /**
+     * Silently refresh the applied coupon discount after cart changes.
+     * If the coupon is no longer valid (e.g. minOrderValue not met), clears it.
+     */
+    const refreshAppliedCoupon = async (items) => {
+        const code = appliedCouponCodeRef.current;
+        if (!code || !items || items.length === 0) return;
+
+        try {
+            const cartItems = buildCouponCartItems(items);
+            if (cartItems.length === 0) {
+                setAppliedCoupon(null);
+                appliedCouponCodeRef.current = null;
+                return;
+            }
+            const resp = await applyCouponAPI(code, cartItems);
+            const data = resp.data.data;
+            setAppliedCoupon({
+                code: data.code,
+                description: data.description,
+                discountType: data.discountType,
+                discountValue: data.discountValue,
+                discountAmount: data.discountAmount,
+                finalAmount: data.finalAmount,
+            });
+        } catch (err) {
+            // Coupon no longer valid — clear silently
+            const reason =
+                err.response?.data?.message ||
+                "Coupon removed (no longer applicable)";
+            logger.warn(`Coupon auto-removed: ${reason}`);
+            setAppliedCoupon(null);
+            appliedCouponCodeRef.current = null;
+            setCouponError(reason);
+        }
+    };
+
+    /**
+     * Apply a coupon code to the cart
+     */
+    const applyCartCoupon = async (code) => {
+        if (!code?.trim()) return;
+        setCouponLoading(true);
+        setCouponError(null);
+        try {
+            const cartItems = buildCouponCartItems(cart.items);
+            const resp = await applyCouponAPI(
+                code.trim().toUpperCase(),
+                cartItems,
+            );
+            const data = resp.data.data;
+            setAppliedCoupon({
+                code: data.code,
+                description: data.description,
+                discountType: data.discountType,
+                discountValue: data.discountValue,
+                discountAmount: data.discountAmount,
+                finalAmount: data.finalAmount,
+            });
+            appliedCouponCodeRef.current = data.code;
+            logger.info("Coupon applied", { code: data.code });
+        } catch (err) {
+            const msg = err.response?.data?.message || "Failed to apply coupon";
+            setCouponError(msg);
+            logger.error("Failed to apply coupon:", msg);
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
+    /**
+     * Remove the currently applied coupon
+     */
+    const removeCartCoupon = () => {
+        setAppliedCoupon(null);
+        appliedCouponCodeRef.current = null;
+        setCouponError(null);
+        logger.info("Coupon removed");
+    };
+
+    /**
      * Reset cart and merge flag on logout
      */
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
-            // User logged out - reset cart state and merge flag
+            // User logged out - reset cart state, merge flag, and coupon
             setCart({
                 items: [],
                 totalQuantity: 0,
                 totalPrice: 0,
             });
             setHasMerged(false);
+            setAppliedCoupon(null);
+            appliedCouponCodeRef.current = null;
+            setCouponError(null);
             logger.info("Cart state reset on logout");
         }
     }, [isAuthenticated, authLoading]);
@@ -706,6 +819,24 @@ export const CartProvider = ({ children }) => {
     };
 
     /**
+     * Auto-refresh coupon when cart items change (authenticated only)
+     */
+    useEffect(() => {
+        if (
+            isAuthenticated &&
+            appliedCouponCodeRef.current &&
+            cart.items.length > 0
+        ) {
+            refreshAppliedCoupon(cart.items);
+        }
+        if (cart.items.length === 0 && appliedCouponCodeRef.current) {
+            setAppliedCoupon(null);
+            appliedCouponCodeRef.current = null;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cart.items]);
+
+    /**
      * Get cart item count
      */
     const getCartCount = () => {
@@ -742,6 +873,13 @@ export const CartProvider = ({ children }) => {
         getCartCount,
         getCartTotal,
         isInCart,
+        // Coupon
+        appliedCoupon,
+        couponLoading,
+        couponError,
+        setCouponError,
+        applyCartCoupon,
+        removeCartCoupon,
     };
 
     return (

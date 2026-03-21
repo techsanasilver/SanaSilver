@@ -4,10 +4,12 @@ import { FiShoppingBag } from "react-icons/fi";
 import { useCart } from "../context/CartContext";
 import CartCard from "../components/cart/CartCard";
 import CartSkeleton from "../components/cart/CartSkeleton";
+import CouponSection from "../components/cart/CouponSection";
 import logger from "../utils/logger.util";
 
 const Cart = () => {
-    const { cart, isLoading, getCartCount, getCartTotal } = useCart();
+    const { cart, isLoading, getCartCount, getCartTotal, appliedCoupon } =
+        useCart();
     const [notification, setNotification] = useState(null);
 
     useEffect(() => {
@@ -74,6 +76,8 @@ const Cart = () => {
 
     const totalItems = getCartCount();
     const subtotal = getCartTotal();
+    const discount = appliedCoupon?.discountAmount || 0;
+    const estimatedTotal = Math.max(0, subtotal - discount);
 
     return (
         <div className="min-h-[calc(100vh-4rem)] bg-background-primary">
@@ -128,12 +132,18 @@ const Cart = () => {
                     {/* Order Summary Column */}
                     <div className="lg:col-span-1">
                         <div className="rounded-xs bg-[#f2efec] p-6 lg:sticky lg:top-24">
-                            <h2 className="text-xl font-medium text-text-primary mb-6">
+                            <h2 className="text-xl font-medium text-text-primary mb-5">
                                 Order Summary
                             </h2>
 
-                            {/* Summary Details */}
-                            <div className="space-y-4 mb-6">
+                            {/* Coupon Section */}
+                            <CouponSection />
+
+                            {/* Divider */}
+                            <div className="border-t border-neutral-200 my-5"></div>
+
+                            {/* Pricing rows */}
+                            <div className="space-y-3 mb-5">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-text-secondary">
                                         Subtotal ({totalItems}{" "}
@@ -143,28 +153,44 @@ const Cart = () => {
                                         {formatPrice(subtotal)}
                                     </span>
                                 </div>
+
+                                {/* Coupon discount row */}
+                                {appliedCoupon && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-green-700">
+                                            Coupon ({appliedCoupon.code})
+                                        </span>
+                                        <span className="text-green-700 font-medium">
+                                            −{formatPrice(discount)}
+                                        </span>
+                                    </div>
+                                )}
+
                                 <div className="flex justify-between text-sm">
                                     <span className="text-text-secondary">
                                         Shipping
                                     </span>
-                                    <span className="text-text-secondary">
-                                        Calculated at checkout
+                                    <span className="text-green-700 font-medium">
+                                        Free
                                     </span>
                                 </div>
                             </div>
 
                             {/* Divider */}
-                            <div className="border-t border-neutral-200 my-6"></div>
+                            <div className="border-t border-neutral-200 my-5"></div>
 
                             {/* Total */}
-                            <div className="flex justify-between mb-6">
-                                <span className="text-lg font-medium text-text-primary/70">
-                                    Total
+                            <div className="flex justify-between mb-1">
+                                <span className="text-lg font-medium text-text-primary/80">
+                                    Estimated Total
                                 </span>
-                                <span className="text-2xl font-semibold text-text-primary/70">
-                                    {formatPrice(subtotal)}
+                                <span className="text-2xl font-semibold text-text-primary">
+                                    {formatPrice(estimatedTotal)}
                                 </span>
                             </div>
+                            <p className="text-xs text-text-secondary mb-6">
+                                Inclusive of 3% GST
+                            </p>
 
                             {/* Checkout Button */}
                             <Link
@@ -173,11 +199,6 @@ const Cart = () => {
                             >
                                 PROCEED TO CHECKOUT
                             </Link>
-
-                            {/* Security & Info */}
-                            <div className="mt-6 text-xs text-text-secondary text-center">
-                                <p>Taxes and shipping calculated at checkout</p>
-                            </div>
                         </div>
                     </div>
                 </div>
