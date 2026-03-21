@@ -38,6 +38,7 @@ const CouponSection = () => {
     const handleToggleAvailable = async () => {
         if (showAvailable) {
             setShowAvailable(false);
+            setAvailableCoupons([]); // reset so next open re-fetches fresh data
             return;
         }
         setShowAvailable(true);

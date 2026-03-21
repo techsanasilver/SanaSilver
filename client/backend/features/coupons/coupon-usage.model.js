@@ -94,7 +94,7 @@ couponUsageSchema.statics.hasUserExceededLimit = async function (
  */
 couponUsageSchema.statics.getCouponStats = async function (couponId) {
     const stats = await this.aggregate([
-        { $match: { coupon: mongoose.Types.ObjectId(couponId) } },
+        { $match: { coupon: new mongoose.Types.ObjectId(couponId) } },
         {
             $group: {
                 _id: null,
@@ -131,7 +131,7 @@ couponUsageSchema.statics.getRecentUsage = async function (
     return await this.find({ coupon: couponId })
         .sort({ usedAt: -1 })
         .limit(limit)
-        .populate("user", "name email")
+        .populate("user", "firstName lastName phone")
         .populate("order", "orderNumber")
         .lean();
 };

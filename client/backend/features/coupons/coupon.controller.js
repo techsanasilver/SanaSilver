@@ -91,61 +91,37 @@ const validateCouponCode = async (req, res) => {
 /**
  * Apply a coupon to the cart (preview pricing)
  * POST /api/coupons/apply
- * Body: { couponCode, cartItems }
+ * Body: { couponCode }
  *
- * Note: This is handled by checkout service's initiateCheckout
- * This endpoint is for standalone coupon application preview
+ * Fetches real cart prices from DB and filters eligible items server-side.
+ * The checkout service re-validates independently before finalising the order.
  */
 const applyCoupon = async (req, res) => {
     try {
-        const { couponCode, cartItems } = req.body;
+        const { couponCode } = req.body;
         const userId = req.user.userId;
 
         if (!couponCode) {
             return apiResponse.badRequest(res, "Coupon code is required");
         }
 
-        if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
-            return apiResponse.badRequest(res, "Cart items are required");
-        }
-
-        // Calculate subtotal
-        const subtotal = cartItems.reduce((sum, item) => {
-            return sum + (item.price || 0) * (item.quantity || 0);
-        }, 0);
-
-        // Validate coupon
-        const validation = await couponService.validateCoupon(
+        const result = await couponService.applyCouponToCart(
             couponCode,
             userId,
-            subtotal,
         );
 
-        if (!validation.valid) {
-            return apiResponse.badRequest(res, validation.error);
-        }
-
-        const { coupon } = validation;
-
-        // Calculate discount (basic calculation, actual will be in checkout)
-        let discountAmount = 0;
-        if (coupon.discountType === "percentage") {
-            discountAmount = (subtotal * coupon.discountValue) / 100;
-            if (coupon.maxDiscount) {
-                discountAmount = Math.min(discountAmount, coupon.maxDiscount);
-            }
-        } else if (coupon.discountType === "flat") {
-            discountAmount = coupon.discountValue;
+        if (!result.valid) {
+            return apiResponse.badRequest(res, result.error);
         }
 
         return apiResponse.success(res, "Coupon applied successfully", {
-            code: coupon.code,
-            description: coupon.description,
-            discountType: coupon.discountType,
-            discountValue: coupon.discountValue,
-            discountAmount: Math.round(discountAmount * 100) / 100,
-            subtotal,
-            finalAmount: Math.round((subtotal - discountAmount) * 100) / 100,
+            code: result.code,
+            description: result.description,
+            discountType: result.discountType,
+            discountValue: result.discountValue,
+            discountAmount: result.discountAmount,
+            subtotal: result.subtotal,
+            finalAmount: result.finalAmount,
         });
     } catch (error) {
         logger.error("Error applying coupon:", error);

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import CouponUsage from "./coupon-usage.model.js";
+import Order from "../orders/order.model.js";
 
 const couponSchema = new mongoose.Schema(
     {
@@ -178,9 +179,17 @@ couponSchema.statics.findAvailableForUser = async function (userId) {
         ],
     }).lean();
 
+    // Check first-time user status once (avoids N+1 queries per coupon)
+    const hasOrders = await Order.exists({ customer: userId });
+
     // Filter out coupons where user has exceeded limit
     const availableCoupons = await Promise.all(
         coupons.map(async (coupon) => {
+            // Filter out first-time-only coupons for returning users
+            if (coupon.firstTimeUserOnly && hasOrders) {
+                return null;
+            }
+
             // Check user-specific restrictions
             if (
                 coupon.applicableUsers &&

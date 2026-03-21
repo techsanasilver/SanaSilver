@@ -206,6 +206,7 @@ const calculateCheckoutPricing = async (
                 name: product.name,
                 images: product.images,
                 purity: product.purity,
+                category: product.category,
             },
             variant: {
                 _id: variant._id,
@@ -454,7 +455,15 @@ const placeOrderCOD = async (userId, checkoutData) => {
         // 3. Create order
         const order = await orderService.createOrder(orderData, session);
 
-        // 4. Increment coupon usage if coupon was applied
+        // 4. Reduce stock
+        await orderService.reduceStock(orderItems, session);
+
+        // 5. Clear cart
+        await Cart.findOneAndUpdate({ userId }, { items: [] }, { session });
+
+        await session.commitTransaction();
+
+        // 6. Increment coupon usage after commit (non-transactional by design)
         if (validatedData.pricing.coupon) {
             await couponService.incrementCouponUsage(
                 validatedData.pricing.coupon.code,
@@ -464,14 +473,6 @@ const placeOrderCOD = async (userId, checkoutData) => {
                 validatedData.pricing.itemsSubtotal,
             );
         }
-
-        // 5. Reduce stock
-        await orderService.reduceStock(orderItems, session);
-
-        // 6. Clear cart
-        await Cart.findOneAndUpdate({ userId }, { items: [] }, { session });
-
-        await session.commitTransaction();
 
         logger.info(
             `COD Order created: ${order.orderNumber} for user ${userId}`,

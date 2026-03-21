@@ -155,12 +155,10 @@ const getAvailableCouponsWithCart = async (userId) => {
     // Get all available coupons
     const coupons = await Coupon.findAvailableForUser(userId);
 
-    // Get user's cart with populated product details
+    // Get user's cart with populated product and variant details
     const cart = await Cart.findOne({ userId })
-        .populate({
-            path: "items.productId",
-            select: "name category",
-        })
+        .populate({ path: "items.productId", select: "name category" })
+        .populate({ path: "items.variantId", select: "sellingPrice" })
         .lean();
 
     // If cart is empty, all coupons are marked as not applicable
@@ -173,8 +171,37 @@ const getAvailableCouponsWithCart = async (userId) => {
         }));
     }
 
+    // Calculate cart total using DB-authoritative prices
+    const cartTotal = cart.items.reduce((sum, item) => {
+        const price = item.variantId?.sellingPrice || 0;
+        return sum + price * item.quantity;
+    }, 0);
+
+    // Check if user is a first-time customer (cached once for all coupons)
+    const hasOrders = await Order.exists({ customer: userId });
+
     // Check applicability for each coupon
     const couponsWithStatus = coupons.map((coupon) => {
+        // Check first-time user restriction
+        if (coupon.firstTimeUserOnly && hasOrders) {
+            return {
+                ...coupon,
+                isApplicable: false,
+                applicabilityReason: "Only available for first-time customers",
+                eligibleItemsCount: 0,
+            };
+        }
+
+        // Check minimum order value
+        if (coupon.minOrderValue && cartTotal < coupon.minOrderValue) {
+            return {
+                ...coupon,
+                isApplicable: false,
+                applicabilityReason: `Minimum order value of ₹${coupon.minOrderValue} required`,
+                eligibleItemsCount: 0,
+            };
+        }
+
         const eligibleItems = checkItemsEligibilityForCoupon(
             cart.items,
             coupon,
@@ -266,6 +293,74 @@ const getCouponByCode = async (couponCode) => {
     });
 };
 
+/**
+ * Apply a coupon to the user's cart (preview only — does not record usage)
+ * Uses DB-authoritative prices and eligible items filter
+ */
+const applyCouponToCart = async (couponCode, userId) => {
+    // Fetch real cart with DB-authoritative prices
+    const cart = await Cart.findOne({ userId })
+        .populate({ path: "items.productId", select: "name category" })
+        .populate({ path: "items.variantId", select: "sellingPrice" })
+        .lean();
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+        return { valid: false, error: "Your cart is empty" };
+    }
+
+    // Calculate real subtotal from DB prices
+    const subtotal = cart.items.reduce((sum, item) => {
+        const price = item.variantId?.sellingPrice || 0;
+        return sum + price * item.quantity;
+    }, 0);
+
+    // Validate coupon-level rules (includes minOrderValue, firstTimeUserOnly, etc.)
+    const validation = await validateCoupon(couponCode, userId, subtotal);
+    if (!validation.valid) {
+        return validation;
+    }
+
+    const { coupon } = validation;
+
+    // Filter eligible items based on coupon product/category restrictions
+    const eligibleItems = checkItemsEligibilityForCoupon(cart.items, coupon);
+    if (eligibleItems.length === 0) {
+        return {
+            valid: false,
+            error: "No items in your cart are eligible for this coupon",
+        };
+    }
+
+    // Calculate discount on eligible subtotal only
+    const eligibleSubtotal = eligibleItems.reduce((sum, item) => {
+        const price = item.variantId?.sellingPrice || 0;
+        return sum + price * item.quantity;
+    }, 0);
+
+    let discountAmount = 0;
+    if (coupon.discountType === "percentage") {
+        discountAmount = (eligibleSubtotal * coupon.discountValue) / 100;
+        if (coupon.maxDiscount) {
+            discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+        }
+    } else if (coupon.discountType === "flat") {
+        discountAmount = Math.min(coupon.discountValue, eligibleSubtotal);
+    }
+
+    discountAmount = Math.round(discountAmount * 100) / 100;
+
+    return {
+        valid: true,
+        code: coupon.code,
+        description: coupon.description,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        discountAmount,
+        subtotal: Math.round(subtotal * 100) / 100,
+        finalAmount: Math.round((subtotal - discountAmount) * 100) / 100,
+    };
+};
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -276,5 +371,6 @@ export {
     incrementCouponUsage,
     getAvailableCoupons,
     getAvailableCouponsWithCart,
+    applyCouponToCart,
     getCouponByCode,
 };
