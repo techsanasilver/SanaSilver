@@ -25,14 +25,12 @@ export const getAvailableCoupons = async () => {
  * Apply a coupon to the cart (preview pricing, no persistence)
  * POST /api/coupons/apply
  * @param {string} couponCode - Coupon code
- * @param {Array} cartItems - Array of { price, quantity }
  * @returns {Promise}
  */
-export const applyCoupon = async (couponCode, cartItems) => {
+export const applyCoupon = async (couponCode) => {
     try {
         const response = await axiosInstance.post(`${API_PREFIX}/apply`, {
             couponCode,
-            cartItems,
         });
         logger.info("Coupon applied", { couponCode });
         return response;

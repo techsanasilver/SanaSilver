@@ -148,7 +148,7 @@ couponSchema.index({ createdAt: -1 });
 // Validate that validTo is after validFrom
 couponSchema.pre("save", function (next) {
     if (this.validTo <= this.validFrom) {
-        next(new Error("Valid to date must be after valid from date"));
+        return next(new Error("Valid to date must be after valid from date"));
     }
     next();
 });

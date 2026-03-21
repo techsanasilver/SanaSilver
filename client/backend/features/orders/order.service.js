@@ -1,5 +1,6 @@
 import Order from "./order.model.js";
 import ProductVariant from "../products/product-variant.model.js";
+import CouponUsage from "../coupons/coupon-usage.model.js";
 import logger from "../../shared/utils/logger.util.js";
 import mongoose from "mongoose";
 
@@ -339,6 +340,24 @@ const cancelOrder = async (orderId, reason, userId = null) => {
         }
 
         await session.commitTransaction();
+
+        // Remove coupon usage record so the user can reuse the coupon
+        if (order.appliedCoupon?.code) {
+            try {
+                await CouponUsage.deleteOne({ order: order._id });
+                // Undo the global usage count increment
+                const Coupon = (await import("../coupons/coupon.model.js"))
+                    .default;
+                await Coupon.findOneAndUpdate(
+                    { code: order.appliedCoupon.code },
+                    { $inc: { usageCount: -1 } },
+                );
+            } catch (couponErr) {
+                logger.error(
+                    `Failed to revert coupon usage on cancel: ${couponErr.message}`,
+                );
+            }
+        }
 
         logger.info(`Order ${order.orderNumber} cancelled. Reason: ${reason}`);
 
