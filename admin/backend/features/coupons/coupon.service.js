@@ -2,6 +2,7 @@ import Coupon from "./coupon.model.js";
 import CouponUsage from "./coupon-usage.model.js";
 import logger from "../../shared/utils/logger.util.js";
 import Order from "../orders/order.model.js";
+import "../users/user.model.js"; // ensure "User" model is registered for populate
 
 /**
  * Create a new coupon

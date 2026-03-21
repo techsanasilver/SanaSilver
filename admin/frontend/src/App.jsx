@@ -15,6 +15,7 @@ import Banners from "./pages/Banners";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Unauthorized from "./pages/Unauthorized";
+import Coupons from "./pages/Coupons";
 
 const App = () => {
     return (
@@ -54,6 +55,7 @@ const App = () => {
                 {/* Other Routes */}
                 <Route path="/customers" element={<div>Customers Page</div>} />
                 <Route path="/banners" element={<Banners />} />
+                <Route path="/coupons" element={<Coupons />} />
                 <Route path="/bulk-operations" element={<BulkOperations />} />
                 <Route path="/analytics" element={<div>Analytics Page</div>} />
                 <Route path="/settings" element={<div>Settings Page</div>} />

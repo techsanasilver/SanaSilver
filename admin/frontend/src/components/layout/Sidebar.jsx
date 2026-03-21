@@ -14,6 +14,7 @@ import {
     MdCategory,
     MdCloudSync,
     MdViewCarousel,
+    MdLocalOffer,
 } from "react-icons/md";
 
 const Sidebar = ({ isOpen, isCollapsed, isMobile, onClose }) => {
@@ -48,6 +49,7 @@ const Sidebar = ({ isOpen, isCollapsed, isMobile, onClose }) => {
         { path: "/orders", icon: MdShoppingCart, label: "Orders" },
         { path: "/customers", icon: MdPeople, label: "Customers" },
         { path: "/banners", icon: MdViewCarousel, label: "Banners" },
+        { path: "/coupons", icon: MdLocalOffer, label: "Coupons" },
         {
             path: "/bulk-operations",
             icon: MdCloudSync,
