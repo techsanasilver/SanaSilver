@@ -67,7 +67,7 @@ const initiateCheckout = async (userId, checkoutData) => {
         const cart = await Cart.findOne({ userId })
             .populate({
                 path: "items.productId",
-                select: "name images purity makingChargesPerGram gstRate category",
+                select: "name images purity makingChargesPerGram gstRate category subcategory",
             })
             .populate({
                 path: "items.variantId",
@@ -207,6 +207,7 @@ const calculateCheckoutPricing = async (
                 images: product.images,
                 purity: product.purity,
                 category: product.category,
+                subcategory: product.subcategory,
             },
             variant: {
                 _id: variant._id,
@@ -521,15 +522,15 @@ const filterEligibleItems = (items, coupon) => {
             coupon.applicableCategories &&
             coupon.applicableCategories.length > 0
         ) {
-            // Note: This assumes product has category field
-            // May need to populate product.category for this check
-            return (
-                item.product.category &&
-                coupon.applicableCategories.some(
-                    (catId) =>
-                        catId.toString() === item.product.category.toString(),
-                )
-            );
+            const productCategoryId = item.product.category?.toString();
+            const productSubcategoryId = item.product.subcategory?.toString();
+            return coupon.applicableCategories.some((catId) => {
+                const catStr = catId.toString();
+                return (
+                    (productCategoryId && catStr === productCategoryId) ||
+                    (productSubcategoryId && catStr === productSubcategoryId)
+                );
+            });
         }
 
         // If no restrictions, all items are eligible

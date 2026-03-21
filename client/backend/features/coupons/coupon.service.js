@@ -157,7 +157,10 @@ const getAvailableCouponsWithCart = async (userId) => {
 
     // Get user's cart with populated product and variant details
     const cart = await Cart.findOne({ userId })
-        .populate({ path: "items.productId", select: "name category" })
+        .populate({
+            path: "items.productId",
+            select: "name category subcategory",
+        })
         .populate({ path: "items.variantId", select: "sellingPrice" })
         .lean();
 
@@ -271,12 +274,15 @@ const checkItemsEligibilityForCoupon = (cartItems, coupon) => {
             coupon.applicableCategories &&
             coupon.applicableCategories.length > 0
         ) {
-            return (
-                product.category &&
-                coupon.applicableCategories.some(
-                    (catId) => catId.toString() === product.category.toString(),
-                )
-            );
+            const productCategoryId = product.category?.toString();
+            const productSubcategoryId = product.subcategory?.toString();
+            return coupon.applicableCategories.some((catId) => {
+                const catStr = catId.toString();
+                return (
+                    (productCategoryId && catStr === productCategoryId) ||
+                    (productSubcategoryId && catStr === productSubcategoryId)
+                );
+            });
         }
 
         // If no restrictions, all items are eligible
@@ -300,7 +306,10 @@ const getCouponByCode = async (couponCode) => {
 const applyCouponToCart = async (couponCode, userId) => {
     // Fetch real cart with DB-authoritative prices
     const cart = await Cart.findOne({ userId })
-        .populate({ path: "items.productId", select: "name category" })
+        .populate({
+            path: "items.productId",
+            select: "name category subcategory",
+        })
         .populate({ path: "items.variantId", select: "sellingPrice" })
         .lean();
 

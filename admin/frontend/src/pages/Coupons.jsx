@@ -378,11 +378,7 @@ const Coupons = () => {
                 getAllProducts({ limit: 200, isActive: true }),
             ]);
             setCategories(catRes.data || catRes.categories || catRes || []);
-            const prodList =
-                prodRes.data?.products ||
-                prodRes.data?.data ||
-                prodRes.products ||
-                [];
+            const prodList = prodRes.data || [];
             setProducts(prodList);
         } catch (err) {
             logger.error("Failed to load reference data:", err);
