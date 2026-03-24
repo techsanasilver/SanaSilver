@@ -1,71 +1,179 @@
-/**
- * Checkout Success Page
- * Order confirmation page shown after successful order placement
- */
-
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { getOrderById } from "../api/orders.api";
+import Loader from "../components/common/Loader";
 import logger from "../utils/logger.util";
+
+const formatPrice = (amount) =>
+    new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0,
+    }).format(amount ?? 0);
 
 const CheckoutSuccess = () => {
     const [searchParams] = useSearchParams();
     const orderId = searchParams.get("orderId");
+    const orderNumber = searchParams.get("orderNumber");
+    const totalFromParams = parseFloat(searchParams.get("total") || "0");
+
+    const [order, setOrder] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        logger.info("Checkout success page loaded", { orderId });
-    }, [orderId]);
+        logger.info("Checkout success page loaded", { orderId, orderNumber });
+
+        if (!orderId) {
+            setLoading(false);
+            return;
+        }
+
+        const fetchOrder = async () => {
+            try {
+                const response = await getOrderById(orderId);
+                const data = response.data?.data || response.data;
+                setOrder(data);
+            } catch (err) {
+                logger.error("Failed to fetch order details:", err.message);
+                // Non-critical — we still show success with URL params
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrder();
+    }, [orderId, orderNumber]);
+
+    if (loading) {
+        return <Loader fullScreen />;
+    }
+
+    const displayOrderNumber = order?.orderNumber || orderNumber;
+    const displayTotal = order?.pricing?.total || totalFromParams;
+    const shippingAddress = order?.shippingAddress;
+    const items = order?.items || [];
 
     return (
-        <div className="container mx-auto px-4 py-16">
-            <div className="max-w-2xl mx-auto text-center">
-                {/* Success Icon */}
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg
-                        className="w-10 h-10 text-green-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                        />
-                    </svg>
+        <div className="min-h-[calc(100vh-4rem)] bg-background-primary">
+            <div className="max-w-2xl mx-auto px-4 py-12 lg:py-20">
+                {/* Success icon */}
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                        <svg
+                            className="w-8 h-8 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                            />
+                        </svg>
+                    </div>
+
+                    <h1 className="text-3xl font-display text-text-primary mb-2">
+                        Order Placed!
+                    </h1>
+                    <p className="text-text-secondary">
+                        Thank you for your order. We'll get it ready soon.
+                    </p>
                 </div>
 
-                <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-                    Order Placed Successfully!
-                </h1>
-                <p className="text-neutral-600 mb-8">
-                    Thank you for your order. We'll send you a confirmation
-                    email shortly.
+                {/* Order summary card */}
+                <div className="bg-white border border-neutral-200 rounded-sm overflow-hidden mb-6">
+                    {/* Order number + total */}
+                    <div className="px-6 py-5 border-b border-neutral-100 flex items-start justify-between gap-4">
+                        <div>
+                            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">
+                                Order
+                            </p>
+                            <p className="font-medium text-text-primary font-mono">
+                                {displayOrderNumber || orderId}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">
+                                Total
+                            </p>
+                            <p className="font-semibold text-lg text-text-primary">
+                                {formatPrice(displayTotal)}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Items */}
+                    {items.length > 0 && (
+                        <div className="px-6 py-4 border-b border-neutral-100">
+                            <p className="text-xs text-text-secondary uppercase tracking-wider mb-3">
+                                Items ({items.length})
+                            </p>
+                            <div className="space-y-2">
+                                {items.map((item, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex justify-between text-sm"
+                                    >
+                                        <span className="text-text-secondary truncate mr-4">
+                                            {item.productName} × {item.quantity}
+                                        </span>
+                                        <span className="font-medium text-text-primary shrink-0">
+                                            {formatPrice(
+                                                (item.discountedSubtotal ??
+                                                    item.subtotal) *
+                                                    item.quantity,
+                                            )}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Delivery address */}
+                    {shippingAddress && (
+                        <div className="px-6 py-4">
+                            <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">
+                                Delivering to
+                            </p>
+                            <p className="text-sm font-medium text-text-primary">
+                                {shippingAddress.name}
+                            </p>
+                            <p className="text-sm text-text-secondary">
+                                {shippingAddress.line1}
+                                {shippingAddress.line2 &&
+                                    `, ${shippingAddress.line2}`}
+                            </p>
+                            <p className="text-sm text-text-secondary">
+                                {shippingAddress.city}, {shippingAddress.state}{" "}
+                                — {shippingAddress.pincode}
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Payment note */}
+                <p className="text-sm text-center text-text-secondary mb-8">
+                    Payment will be collected when your order is delivered.
                 </p>
 
-                {orderId && (
-                    <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-6 mb-8">
-                        <p className="text-sm text-neutral-600 mb-1">
-                            Order ID
-                        </p>
-                        <p className="text-lg font-mono font-semibold">
-                            {orderId}
-                        </p>
-                    </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link
-                        to="/orders"
-                        className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark"
-                    >
-                        View Orders
-                    </Link>
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                    {orderId && (
+                        <Link
+                            to={`/orders/${orderId}`}
+                            className="flex-1 py-3 bg-text-primary text-white text-center font-medium rounded-sm hover:bg-text-secondary transition-colors text-sm"
+                        >
+                            VIEW ORDER DETAILS
+                        </Link>
+                    )}
                     <Link
                         to="/shop"
-                        className="px-6 py-3 border border-neutral-300 text-neutral-700 font-medium rounded-lg hover:border-primary hover:text-primary"
+                        className="flex-1 py-3 border border-neutral-300 text-text-primary text-center font-medium rounded-sm hover:border-text-primary transition-colors text-sm"
                     >
-                        Continue Shopping
+                        CONTINUE SHOPPING
                     </Link>
                 </div>
             </div>

@@ -30,8 +30,8 @@ const getMyOrders = async (req, res) => {
 
         return apiResponse.successWithPagination(
             res,
-            result.orders,
             "Orders retrieved successfully",
+            result.orders,
             result.pagination,
         );
     } catch (error) {
@@ -64,8 +64,8 @@ const getOrderDetails = async (req, res) => {
 
         return apiResponse.success(
             res,
-            order,
             "Order details retrieved successfully",
+            order,
         );
     } catch (error) {
         logger.error(`Error fetching order details: ${error.message}`);
@@ -100,7 +100,7 @@ const getOrderByNumber = async (req, res) => {
             );
         }
 
-        return apiResponse.success(res, order, "Order retrieved successfully");
+        return apiResponse.success(res, "Order retrieved successfully", order);
     } catch (error) {
         logger.error(`Error fetching order by number: ${error.message}`);
 
@@ -124,8 +124,8 @@ const getMyStats = async (req, res) => {
 
         return apiResponse.success(
             res,
-            stats,
             "Order statistics retrieved successfully",
+            stats,
         );
     } catch (error) {
         logger.error(`Error fetching customer stats: ${error.message}`);
@@ -174,19 +174,15 @@ const cancelOrder = async (req, res) => {
             `Order ${order.orderNumber} cancelled by customer ${customerId}`,
         );
 
-        return apiResponse.success(
-            res,
-            {
-                orderId: result.order._id,
-                orderNumber: result.order.orderNumber,
-                status: result.order.orderStatus,
-                refundRequired: result.refundRequired,
-                refundAmount: result.refundRequired
-                    ? result.order.pricing.total
-                    : 0,
-            },
-            "Order cancelled successfully",
-        );
+        return apiResponse.success(res, "Order cancelled successfully", {
+            orderId: result.order._id,
+            orderNumber: result.order.orderNumber,
+            status: result.order.orderStatus,
+            refundRequired: result.refundRequired,
+            refundAmount: result.refundRequired
+                ? result.order.pricing.total
+                : 0,
+        });
     } catch (error) {
         logger.error(`Error cancelling order: ${error.message}`);
 
@@ -237,8 +233,8 @@ const trackOrder = async (req, res) => {
 
         return apiResponse.success(
             res,
-            trackingData,
             "Tracking information retrieved successfully",
+            trackingData,
         );
     } catch (error) {
         logger.error(`Error fetching tracking info: ${error.message}`);

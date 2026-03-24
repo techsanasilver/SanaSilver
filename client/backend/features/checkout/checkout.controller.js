@@ -44,8 +44,8 @@ const initiateCheckout = async (req, res) => {
 
         return apiResponse.success(
             res,
-            result,
             "Checkout initiated successfully",
+            result,
         );
     } catch (error) {
         logger.error(`Error initiating checkout: ${error.message}`);
@@ -102,17 +102,13 @@ const placeOrderCOD = async (req, res) => {
 
         logger.info(`COD order placed: ${order.orderNumber} by user ${userId}`);
 
-        return apiResponse.created(
-            res,
-            {
-                orderId: order._id,
-                orderNumber: order.orderNumber,
-                status: order.orderStatus,
-                paymentMethod: order.payment.method,
-                total: order.pricing.total,
-            },
-            "Order placed successfully",
-        );
+        return apiResponse.created(res, "Order placed successfully", {
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            status: order.orderStatus,
+            paymentMethod: order.payment.method,
+            total: order.pricing.total,
+        });
     } catch (error) {
         logger.error(`Error placing COD order: ${error.message}`);
 
