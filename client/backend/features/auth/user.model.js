@@ -10,32 +10,52 @@ const addressSchema = new mongoose.Schema(
         name: {
             type: String,
             required: true,
+            trim: true,
+            maxlength: [100, "Name cannot exceed 100 characters"],
         },
         phone: {
             type: String,
             required: true,
+            trim: true,
+            validate: {
+                validator: (v) => /^[6-9]\d{9}$|^\+91[6-9]\d{9}$/.test(v),
+                message: "Please provide a valid 10-digit Indian mobile number",
+            },
         },
         addressLine1: {
             type: String,
             required: true,
+            trim: true,
+            maxlength: [200, "Address cannot exceed 200 characters"],
         },
         addressLine2: {
             type: String,
+            trim: true,
         },
         city: {
             type: String,
             required: true,
+            trim: true,
+            maxlength: [50, "City cannot exceed 50 characters"],
         },
         state: {
             type: String,
             required: true,
+            trim: true,
+            maxlength: [50, "State cannot exceed 50 characters"],
         },
         pincode: {
             type: String,
             required: true,
+            trim: true,
+            validate: {
+                validator: (v) => /^\d{6}$/.test(v),
+                message: "Pincode must be exactly 6 digits",
+            },
         },
         landmark: {
             type: String,
+            trim: true,
         },
         isDefault: {
             type: Boolean,
