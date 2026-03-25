@@ -138,15 +138,9 @@ const CheckoutAddressForm = ({
             <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 text-sm bg-text-primary text-white rounded-sm hover:bg-text-secondary transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 text-sm bg-text-primary text-white rounded-sm hover:bg-text-secondary transition-colors disabled:opacity-50"
             >
-                {saving ? (
-                    <>
-                        <Loader size="sm" variant="white" /> Saving
-                    </>
-                ) : (
-                    "Save address"
-                )}
+                {saving ? "Saving..." : "Save address"}
             </button>
             <button
                 type="button"
@@ -161,7 +155,12 @@ const CheckoutAddressForm = ({
 
 const Checkout = () => {
     const navigate = useNavigate();
-    const { cart, isLoading: cartLoading, appliedCoupon } = useCart();
+    const {
+        cart,
+        isLoading: cartLoading,
+        appliedCoupon,
+        clearCart,
+    } = useCart();
     const { user, isLoading: authLoading, updateUser } = useAuth();
 
     // Address & payment state
@@ -347,8 +346,9 @@ const Checkout = () => {
             });
 
             navigate(
-                `/checkout/success?orderId=${result.orderId}&orderNumber=${encodeURIComponent(result.orderNumber)}&total=${result.total}`,
+                `/checkout/success?orderNumber=${encodeURIComponent(result.orderNumber)}`,
             );
+            clearCart();
         } catch (err) {
             const msg =
                 err.response?.data?.message ||
@@ -603,16 +603,11 @@ const Checkout = () => {
                             showAddForm ||
                             showBillingAddForm
                         }
-                        className="w-full py-4 bg-text-primary text-white font-medium rounded-sm hover:bg-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-text-primary text-white font-medium rounded-sm hover:bg-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isPlacing ? (
-                            <>
-                                <Loader size="sm" variant="white" />
-                                <span>Placing order...</span>
-                            </>
-                        ) : (
-                            `PLACE ORDER — ${formatPrice(estimatedTotal)}`
-                        )}
+                        {isPlacing
+                            ? "Placing order..."
+                            : `PLACE ORDER — ${formatPrice(estimatedTotal)}`}
                     </button>
 
                     <p className="text-xs text-text-secondary text-center">

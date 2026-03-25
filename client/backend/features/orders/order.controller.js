@@ -52,7 +52,7 @@ const getOrderDetails = async (req, res) => {
         const order = await orderService.getOrderById(orderId);
 
         // Check ownership
-        if (order.customer._id.toString() !== customerId) {
+        if (order.customer._id.toString() !== customerId.toString()) {
             logger.warn(
                 `Unauthorized order access attempt: User ${customerId} tried to access order ${orderId}`,
             );
@@ -90,7 +90,7 @@ const getOrderByNumber = async (req, res) => {
         const order = await orderService.getOrderByNumber(orderNumber);
 
         // Check ownership
-        if (order.customer._id.toString() !== customerId) {
+        if (order.customer._id.toString() !== customerId.toString()) {
             logger.warn(
                 `Unauthorized order access attempt: User ${customerId} tried to access order ${orderNumber}`,
             );
@@ -157,7 +157,7 @@ const cancelOrder = async (req, res) => {
         // Get order to check ownership
         const order = await orderService.getOrderById(orderId);
 
-        if (order.customer._id.toString() !== customerId) {
+        if (order.customer._id.toString() !== customerId.toString()) {
             logger.warn(
                 `Unauthorized cancel attempt: User ${customerId} tried to cancel order ${orderId}`,
             );
@@ -214,7 +214,7 @@ const trackOrder = async (req, res) => {
         const order = await orderService.getOrderById(orderId);
 
         // Check ownership
-        if (order.customer._id.toString() !== customerId) {
+        if (order.customer._id.toString() !== customerId.toString()) {
             logger.warn(
                 `Unauthorized tracking access: User ${customerId} tried to track order ${orderId}`,
             );

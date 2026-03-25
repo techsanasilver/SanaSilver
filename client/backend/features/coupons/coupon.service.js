@@ -195,20 +195,35 @@ const getAvailableCouponsWithCart = async (userId) => {
             };
         }
 
-        // Check minimum order value
-        if (coupon.minOrderValue && cartTotal < coupon.minOrderValue) {
-            return {
-                ...coupon,
-                isApplicable: false,
-                applicabilityReason: `Minimum order value of ₹${coupon.minOrderValue} required`,
-                eligibleItemsCount: 0,
-            };
-        }
-
+        // Filter eligible items first, then check minOrderValue against eligible total only.
+        // This ensures restricted coupons check the right value (not bolstered by non-eligible items),
+        // and uses GST-inclusive sellingPrice (what the customer sees) — not the pre-GST base.
         const eligibleItems = checkItemsEligibilityForCoupon(
             cart.items,
             coupon,
         );
+
+        const eligibleSellingTotal = eligibleItems.reduce((sum, item) => {
+            return sum + (item.variantId?.sellingPrice || 0) * item.quantity;
+        }, 0);
+
+        if (
+            coupon.minOrderValue &&
+            eligibleSellingTotal < coupon.minOrderValue
+        ) {
+            const remaining = Math.ceil(
+                coupon.minOrderValue - eligibleSellingTotal,
+            );
+            return {
+                ...coupon,
+                isApplicable: false,
+                applicabilityReason:
+                    eligibleItems.length > 0
+                        ? `Add ₹${remaining} more to use this coupon`
+                        : `Minimum order value of ₹${coupon.minOrderValue} required`,
+                eligibleItemsCount: eligibleItems.length,
+            };
+        }
 
         const isApplicable = eligibleItems.length > 0;
 
@@ -317,22 +332,16 @@ const applyCouponToCart = async (couponCode, userId) => {
         return { valid: false, error: "Your cart is empty" };
     }
 
-    // Calculate real subtotal from DB prices
-    const subtotal = cart.items.reduce((sum, item) => {
-        const price = item.variantId?.sellingPrice || 0;
-        return sum + price * item.quantity;
-    }, 0);
-
-    // Validate coupon-level rules (includes minOrderValue, firstTimeUserOnly, etc.)
-    const validation = await validateCoupon(couponCode, userId, subtotal);
-    if (!validation.valid) {
-        return validation;
+    // Smart minOrderValue: filter eligible items first, then check minOrderValue
+    // against eligible items' GST-inclusive total only.
+    // This ensures restricted coupons check only the products they apply to,
+    // and the full-cart displayed price (GST-inclusive) is used — not the pre-GST base.
+    const rawCoupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+    if (!rawCoupon) {
+        return { valid: false, error: "Invalid coupon code" };
     }
 
-    const { coupon } = validation;
-
-    // Filter eligible items based on coupon product/category restrictions
-    const eligibleItems = checkItemsEligibilityForCoupon(cart.items, coupon);
+    const eligibleItems = checkItemsEligibilityForCoupon(cart.items, rawCoupon);
     if (eligibleItems.length === 0) {
         return {
             valid: false,
@@ -340,10 +349,26 @@ const applyCouponToCart = async (couponCode, userId) => {
         };
     }
 
-    // Calculate discount on eligible subtotal only
+    // GST-inclusive eligible total — used for minOrderValue check
     const eligibleSubtotal = eligibleItems.reduce((sum, item) => {
-        const price = item.variantId?.sellingPrice || 0;
-        return sum + price * item.quantity;
+        return sum + (item.variantId?.sellingPrice || 0) * item.quantity;
+    }, 0);
+
+    // Full validation: dates, usage limits, user restrictions + minOrderValue vs eligible total
+    const validation = await validateCoupon(
+        couponCode,
+        userId,
+        eligibleSubtotal,
+    );
+    if (!validation.valid) {
+        return validation;
+    }
+
+    const { coupon } = validation;
+
+    // GST-inclusive cart total (for response only)
+    const cartTotal = cart.items.reduce((sum, item) => {
+        return sum + (item.variantId?.sellingPrice || 0) * item.quantity;
     }, 0);
 
     let discountAmount = 0;
@@ -365,8 +390,8 @@ const applyCouponToCart = async (couponCode, userId) => {
         discountType: coupon.discountType,
         discountValue: coupon.discountValue,
         discountAmount,
-        subtotal: Math.round(subtotal * 100) / 100,
-        finalAmount: Math.round((subtotal - discountAmount) * 100) / 100,
+        subtotal: Math.round(cartTotal * 100) / 100,
+        finalAmount: Math.round((cartTotal - discountAmount) * 100) / 100,
     };
 };
 

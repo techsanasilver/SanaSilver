@@ -219,17 +219,14 @@ const updateOrderStatus = async (orderId, newStatus, options = {}) => {
         // Update status
         order.orderStatus = newStatus;
 
-        // Add to status history with note
-        if (options.note || options.updatedBy) {
-            const historyEntry = {
-                status: newStatus,
-                timestamp: new Date(),
-            };
-            if (options.note) historyEntry.note = options.note;
-            if (options.updatedBy) historyEntry.updatedBy = options.updatedBy;
-
-            order.statusHistory.push(historyEntry);
-        }
+        // Always record in status history
+        const historyEntry = {
+            status: newStatus,
+            timestamp: new Date(),
+        };
+        if (options.note) historyEntry.note = options.note;
+        if (options.updatedBy) historyEntry.updatedBy = options.updatedBy;
+        order.statusHistory.push(historyEntry);
 
         await order.save();
 
@@ -275,6 +272,11 @@ const updatePaymentStatus = async (
             // Auto-confirm order on successful payment
             if (order.orderStatus === "pending") {
                 order.orderStatus = "confirmed";
+                order.statusHistory.push({
+                    status: "confirmed",
+                    timestamp: new Date(),
+                    note: "Auto-confirmed on payment",
+                });
             }
         }
 
@@ -511,6 +513,10 @@ const addTrackingInfo = async (orderId, trackingData) => {
         // Update status to shipped
         if (order.orderStatus !== "shipped") {
             order.orderStatus = "shipped";
+            order.statusHistory.push({
+                status: "shipped",
+                timestamp: new Date(),
+            });
         }
 
         await order.save();
@@ -538,6 +544,10 @@ const markAsDelivered = async (orderId) => {
 
         order.orderStatus = "delivered";
         order.tracking.deliveredAt = new Date();
+        order.statusHistory.push({
+            status: "delivered",
+            timestamp: new Date(),
+        });
 
         await order.save();
 

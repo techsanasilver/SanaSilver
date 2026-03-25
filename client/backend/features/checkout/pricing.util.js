@@ -3,8 +3,8 @@
 // ============================================================================
 
 export const GST_RATE = 3; // 3% for jewelry
-export const FREE_SHIPPING_THRESHOLD = 2000; // Free shipping above ₹2000
-export const FLAT_SHIPPING_CHARGE = 100; // ₹100 below threshold
+export const FREE_SHIPPING_THRESHOLD = 0; // Free shipping on all orders
+export const FLAT_SHIPPING_CHARGE = 0; // No shipping charge
 export const COD_MAX_ORDER_VALUE = 50000; // COD not available above ₹50,000
 export const CURRENT_SILVER_RATE_PER_GRAM = 80; // Example: ₹80/gram (in production, fetch from rate service)
 

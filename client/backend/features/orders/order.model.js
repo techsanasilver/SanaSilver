@@ -1,6 +1,17 @@
 import mongoose from "mongoose";
 
 // ============================================================================
+// COUNTER SCHEMA (atomic order number generation)
+// ============================================================================
+
+const counterSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    seq: { type: Number, default: 0 },
+});
+
+const Counter = mongoose.model("Counter", counterSchema);
+
+// ============================================================================
 // SUB-SCHEMAS
 // ============================================================================
 
@@ -347,41 +358,29 @@ orderSchema.index({ "payment.status": 1 });
 orderSchema.index({ createdAt: -1 });
 
 // ============================================================================
-// PRE-SAVE HOOKS
+// PRE-VALIDATE HOOKS
 // ============================================================================
 
 /**
- * Auto-generate order number before saving
+ * Auto-generate order number BEFORE validation
+ * Must be pre('validate'), not pre('save') — Mongoose runs validators before
+ * pre-save hooks, so orderNumber would fail the required check otherwise.
  * Format: ORD-YYYYMMDD-0001
  */
-orderSchema.pre("save", async function (next) {
+orderSchema.pre("validate", async function () {
     if (!this.orderNumber) {
         const date = new Date();
         const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
 
-        // Count orders created today
-        const startOfDay = new Date(date.setHours(0, 0, 0, 0));
-        const count = await mongoose.model("Order").countDocuments({
-            createdAt: { $gte: startOfDay },
-        });
+        // Atomically increment a per-day counter — race-condition safe
+        const counter = await Counter.findOneAndUpdate(
+            { _id: `orders-${dateStr}` },
+            { $inc: { seq: 1 } },
+            { new: true, upsert: true },
+        );
 
-        // Generate order number
-        this.orderNumber = `ORD-${dateStr}-${String(count + 1).padStart(4, "0")}`;
+        this.orderNumber = `ORD-${dateStr}-${String(counter.seq).padStart(4, "0")}`;
     }
-    next();
-});
-
-/**
- * Add to status history when order status changes
- */
-orderSchema.pre("save", function (next) {
-    if (this.isModified("orderStatus")) {
-        this.statusHistory.push({
-            status: this.orderStatus,
-            timestamp: new Date(),
-        });
-    }
-    next();
 });
 
 // ============================================================================
@@ -482,7 +481,7 @@ orderSchema.statics.getCustomerOrders = async function (
  */
 orderSchema.statics.getCustomerStats = async function (customerId) {
     const stats = await this.aggregate([
-        { $match: { customer: mongoose.Types.ObjectId(customerId) } },
+        { $match: { customer: new mongoose.Types.ObjectId(customerId) } },
         {
             $group: {
                 _id: null,

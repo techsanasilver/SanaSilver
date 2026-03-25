@@ -71,7 +71,7 @@ const initiateCheckout = async (userId, checkoutData) => {
             })
             .populate({
                 path: "items.variantId",
-                select: "sku size color weight price stockQuantity images gemstoneCharges",
+                select: "sku size color weight sellingPrice stockQuantity images gemstoneCharges priceBreakdown",
             });
 
         if (!cart || cart.items.length === 0) {
@@ -183,18 +183,29 @@ const calculateCheckoutPricing = async (
             continue;
         }
 
-        // Use pre-calculated values from variant's priceBreakdown
-        // These are already calculated when variant is created/updated
+        // Use pre-calculated values from variant's priceBreakdown if available.
+        // Fallback: back-calculate from sellingPrice (which is GST-inclusive) when
+        // priceBreakdown is empty (admin hasn't computed it yet).
         const priceBreakdown = variant.priceBreakdown || {};
+        const gstRate =
+            priceBreakdown.gstRate || product.gstRate || pricing.GST_RATE;
 
         const metalValue = priceBreakdown.metalValue || 0;
         const makingCharges = priceBreakdown.makingCharges || 0;
         const gemstoneCharges = priceBreakdown.gemstoneCharges || 0;
-        const itemSubtotal =
-            priceBreakdown.subtotal ||
-            metalValue + makingCharges + gemstoneCharges;
-        const gstRate =
-            priceBreakdown.gstRate || product.gstRate || pricing.GST_RATE;
+
+        let itemSubtotal;
+        if (priceBreakdown.subtotal > 0) {
+            // priceBreakdown is populated — use it directly (already pre-GST)
+            itemSubtotal = priceBreakdown.subtotal;
+        } else if (variant.sellingPrice > 0) {
+            // sellingPrice is GST-inclusive — back-calculate the pre-GST base price
+            itemSubtotal = pricing.roundPrice(
+                variant.sellingPrice / (1 + gstRate / 100),
+            );
+        } else {
+            itemSubtotal = 0;
+        }
 
         // Calculate total for quantity
         const quantitySubtotal = itemSubtotal * cartItem.quantity;
@@ -215,7 +226,7 @@ const calculateCheckoutPricing = async (
                 size: variant.size,
                 color: variant.color,
                 weight: variant.weight,
-                price: variant.price,
+                sellingPrice: variant.sellingPrice,
                 stockQuantity: variant.stockQuantity,
                 images: variant.images,
             },
@@ -230,70 +241,103 @@ const calculateCheckoutPricing = async (
     }
 
     // Calculate cart-level discount (coupon support)
-    let cartDiscount = 0;
+    let cartDiscount = 0; // pre-GST equivalent, used for item-level distribution
+    let couponFaceValue = 0; // GST-inclusive face value stored in order & shown to customer
     let couponInfo = null;
     let eligibleItems = items;
 
     // Apply coupon if provided
     if (couponCode) {
         try {
-            // Validate coupon (coupon-level rules)
-            const validation = await couponService.validateCoupon(
-                couponCode,
-                userId,
-                itemsSubtotal,
-            );
-
-            if (validation.valid) {
-                const coupon = validation.coupon;
-
-                // Filter eligible items based on coupon applicability (cart-level rules)
-                eligibleItems = filterEligibleItems(items, coupon);
-
-                if (eligibleItems.length === 0) {
-                    warnings.push({
-                        issue: "No items in your cart are eligible for this coupon",
-                    });
-                } else {
-                    // Calculate eligible subtotal
-                    const eligibleSubtotal = eligibleItems.reduce(
-                        (sum, item) => sum + item.subtotal,
-                        0,
-                    );
-
-                    // Calculate discount based on coupon type
-                    if (coupon.discountType === "percentage") {
-                        cartDiscount =
-                            (eligibleSubtotal * coupon.discountValue) / 100;
-                        if (coupon.maxDiscount) {
-                            cartDiscount = Math.min(
-                                cartDiscount,
-                                coupon.maxDiscount,
-                            );
-                        }
-                    } else if (coupon.discountType === "flat") {
-                        cartDiscount = Math.min(
-                            coupon.discountValue,
-                            eligibleSubtotal,
-                        );
-                    } else if (coupon.discountType === "free_shipping") {
-                        // Shipping discount will be handled separately
-                        cartDiscount = 0;
-                    }
-
-                    // Save coupon info for order
-                    couponInfo = {
-                        code: coupon.code,
-                        description: coupon.description,
-                        discountType: coupon.discountType,
-                        discountValue: coupon.discountValue,
-                        discountApplied: cartDiscount,
-                    };
-                }
-            } else {
+            // Smart coupon validation:
+            // 1. Pre-fetch coupon to determine product/category restrictions
+            // 2. Filter eligible checkout items first
+            // 3. Check minOrderValue against eligible items' GST-inclusive total only
+            //    — restricted coupons check only the products they apply to,
+            //    — and GST-inclusive sellingPrice is used (matches what the customer sees)
+            const couponDoc = await couponService.getCouponByCode(couponCode);
+            if (!couponDoc) {
                 warnings.push({
-                    issue: `Coupon validation failed: ${validation.error}`,
+                    issue: `Coupon '${couponCode}' is invalid — skipped.`,
                 });
+            } else {
+                const eligibleForCoupon = filterEligibleItems(items, couponDoc);
+
+                // GST-inclusive eligible total for minOrderValue check
+                const eligibleSellingPriceTotal = eligibleForCoupon.reduce(
+                    (sum, item) =>
+                        sum + (item.variant.sellingPrice || 0) * item.quantity,
+                    0,
+                );
+
+                const validation = await couponService.validateCoupon(
+                    couponCode,
+                    userId,
+                    eligibleSellingPriceTotal,
+                );
+
+                if (validation.valid) {
+                    const coupon = validation.coupon;
+
+                    eligibleItems = eligibleForCoupon;
+
+                    if (eligibleItems.length === 0) {
+                        warnings.push({
+                            issue: "No items in your cart are eligible for this coupon",
+                        });
+                    } else {
+                        // Pre-GST eligible subtotal (for proportional back-calculation)
+                        const eligibleSubtotal = eligibleItems.reduce(
+                            (sum, item) => sum + item.subtotal,
+                            0,
+                        );
+
+                        // Compute the GST-inclusive face value — the amount the customer
+                        // actually saves on their final bill (matches what was shown in cart).
+                        // eligibleSellingPriceTotal is the GST-inclusive eligible cart total.
+                        if (coupon.discountType === "percentage") {
+                            couponFaceValue =
+                                (eligibleSellingPriceTotal *
+                                    coupon.discountValue) /
+                                100;
+                            if (coupon.maxDiscount) {
+                                couponFaceValue = Math.min(
+                                    couponFaceValue,
+                                    coupon.maxDiscount,
+                                );
+                            }
+                        } else if (coupon.discountType === "flat") {
+                            couponFaceValue = Math.min(
+                                coupon.discountValue,
+                                eligibleSellingPriceTotal,
+                            );
+                        } else if (coupon.discountType === "free_shipping") {
+                            couponFaceValue = 0;
+                        }
+
+                        // Back-calculate the pre-GST equivalent so that when GST is
+                        // recalculated on the discounted base, the final total equals
+                        // (eligibleSellingPriceTotal − couponFaceValue).
+                        // Formula: cartDiscount = couponFaceValue × (preGstBase / gstInclusive)
+                        cartDiscount =
+                            eligibleSellingPriceTotal > 0
+                                ? couponFaceValue *
+                                  (eligibleSubtotal / eligibleSellingPriceTotal)
+                                : 0;
+
+                        couponInfo = {
+                            code: coupon.code,
+                            description: coupon.description,
+                            discountType: coupon.discountType,
+                            discountValue: coupon.discountValue,
+                            discountApplied: couponFaceValue,
+                        };
+                    }
+                } else {
+                    warnings.push({
+                        issue: `Coupon validation failed: ${validation.error}`,
+                    });
+                }
             }
         } catch (error) {
             logger.error("Error applying coupon:", error);
@@ -337,16 +381,17 @@ const calculateCheckoutPricing = async (
         };
     });
 
-    // Calculate GST on discounted amounts
+    // Calculate GST on discounted amounts.
+    // Round discountedSubtotal first so item.total stays consistent with
+    // the cart-level total (which also rounds before summing).
     itemsWithDiscount.forEach((item) => {
-        const gstAmount = pricing.calculateGST(
-            item.discountedSubtotal || item.subtotal,
-            item.gstRate,
+        const taxableBase = pricing.roundPrice(
+            item.discountedSubtotal ?? item.subtotal,
         );
+        item.discountedSubtotal = taxableBase;
+        const gstAmount = pricing.calculateGST(taxableBase, item.gstRate);
         item.gstAmount = pricing.roundPrice(gstAmount);
-        item.total = pricing.roundPrice(
-            (item.discountedSubtotal || item.subtotal) + gstAmount,
-        );
+        item.total = pricing.roundPrice(taxableBase + gstAmount);
     });
 
     // Calculate cart-level pricing
@@ -367,7 +412,7 @@ const calculateCheckoutPricing = async (
 
     const pricingSummary = {
         itemsSubtotal: pricing.roundPrice(itemsSubtotal),
-        discount: pricing.roundPrice(cartDiscount),
+        discount: pricing.roundPrice(couponFaceValue), // GST-inclusive face value
         discountedSubtotal: pricing.roundPrice(discountedSubtotal),
         shippingCharges: pricing.roundPrice(shippingCharges),
         taxableAmount: pricing.roundPrice(taxableAmount),
@@ -420,9 +465,9 @@ const placeOrderCOD = async (userId, checkoutData) => {
             metalValue: item.metalValue,
             makingCharges: item.makingCharges,
             gemstoneCharges: item.gemstoneCharges,
-            subtotal: item.subtotal / item.quantity, // Per unit
+            subtotal: item.subtotal, // Line total (all qty)
             discount: item.discount,
-            discountedSubtotal: item.discountedSubtotal / item.quantity, // Per unit
+            discountedSubtotal: item.discountedSubtotal, // Line total (all qty)
             gstRate: item.gstRate,
             gstAmount: item.gstAmount,
             total: item.total,
@@ -439,6 +484,7 @@ const placeOrderCOD = async (userId, checkoutData) => {
                 status: "pending",
             },
             orderStatus: "confirmed", // COD orders are confirmed immediately
+            statusHistory: [{ status: "confirmed", timestamp: new Date() }],
             customerNote: validatedData.customerNote,
         };
 
@@ -451,6 +497,7 @@ const placeOrderCOD = async (userId, checkoutData) => {
                 discountValue: validatedData.pricing.coupon.discountValue,
                 discountAmount: validatedData.pricing.coupon.discountApplied,
             };
+            orderData.couponCode = validatedData.pricing.coupon.code;
         }
 
         // 3. Create order

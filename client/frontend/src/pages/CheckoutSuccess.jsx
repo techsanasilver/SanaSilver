@@ -1,57 +1,135 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getOrderById } from "../api/orders.api";
-import Loader from "../components/common/Loader";
+import { getOrderByNumber } from "../api/orders.api";
 import logger from "../utils/logger.util";
 
 const formatPrice = (amount) =>
     new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
+        minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(amount ?? 0);
 
 const CheckoutSuccess = () => {
     const [searchParams] = useSearchParams();
-    const orderId = searchParams.get("orderId");
     const orderNumber = searchParams.get("orderNumber");
-    const totalFromParams = parseFloat(searchParams.get("total") || "0");
 
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [notFound, setNotFound] = useState(false);
 
     useEffect(() => {
-        logger.info("Checkout success page loaded", { orderId, orderNumber });
+        logger.info("Checkout success page loaded", { orderNumber });
 
-        if (!orderId) {
+        if (!orderNumber) {
+            setNotFound(true);
             setLoading(false);
             return;
         }
 
         const fetchOrder = async () => {
             try {
-                const response = await getOrderById(orderId);
+                const response = await getOrderByNumber(orderNumber);
                 const data = response.data?.data || response.data;
-                setOrder(data);
+                if (!data) {
+                    setNotFound(true);
+                } else {
+                    setOrder(data);
+                }
             } catch (err) {
                 logger.error("Failed to fetch order details:", err.message);
-                // Non-critical — we still show success with URL params
+                setNotFound(true);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchOrder();
-    }, [orderId, orderNumber]);
+    }, [orderNumber]);
 
     if (loading) {
-        return <Loader fullScreen />;
+        return (
+            <div className="min-h-[calc(100vh-4rem)] bg-background-primary">
+                <div className="max-w-2xl mx-auto px-4 py-12 lg:py-20 animate-pulse">
+                    {/* Icon + heading */}
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 bg-neutral-200 rounded-full mx-auto mb-5" />
+                        <div className="h-8 bg-neutral-200 rounded w-48 mx-auto mb-2" />
+                        <div className="h-4 bg-neutral-200 rounded w-64 mx-auto" />
+                    </div>
+
+                    {/* Card */}
+                    <div className="bg-white border border-neutral-200 rounded-sm overflow-hidden mb-6">
+                        {/* Order number + total */}
+                        <div className="px-6 py-5 border-b border-neutral-100 flex justify-between">
+                            <div className="space-y-2">
+                                <div className="h-3 bg-neutral-200 rounded w-12" />
+                                <div className="h-4 bg-neutral-200 rounded w-36" />
+                            </div>
+                            <div className="space-y-2 text-right">
+                                <div className="h-3 bg-neutral-200 rounded w-10 ml-auto" />
+                                <div className="h-6 bg-neutral-200 rounded w-24 ml-auto" />
+                            </div>
+                        </div>
+
+                        {/* Items */}
+                        <div className="px-6 py-4 border-b border-neutral-100 space-y-3">
+                            <div className="h-3 bg-neutral-200 rounded w-20 mb-3" />
+                            {[1, 2].map((i) => (
+                                <div key={i} className="flex justify-between">
+                                    <div className="h-4 bg-neutral-200 rounded w-48" />
+                                    <div className="h-4 bg-neutral-200 rounded w-20" />
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Address */}
+                        <div className="px-6 py-4 space-y-2">
+                            <div className="h-3 bg-neutral-200 rounded w-24 mb-2" />
+                            <div className="h-4 bg-neutral-200 rounded w-40" />
+                            <div className="h-4 bg-neutral-200 rounded w-56" />
+                            <div className="h-4 bg-neutral-200 rounded w-48" />
+                        </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex-1 h-11 bg-neutral-200 rounded-sm" />
+                        <div className="flex-1 h-11 bg-neutral-200 rounded-sm" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (notFound) {
+        return (
+            <div className="min-h-[calc(100vh-4rem)] bg-background-primary flex items-center justify-center">
+                <div className="text-center px-4">
+                    <p className="text-2xl font-display text-text-primary mb-3">
+                        Order Not Found
+                    </p>
+                    <p className="text-text-secondary mb-8">
+                        We couldn't find the order you're looking for.
+                    </p>
+                    <Link
+                        to="/orders"
+                        className="inline-block py-3 px-8 bg-text-primary text-white font-medium rounded-sm hover:bg-text-secondary transition-colors text-sm"
+                    >
+                        VIEW MY ORDERS
+                    </Link>
+                </div>
+            </div>
+        );
     }
 
     const displayOrderNumber = order?.orderNumber || orderNumber;
-    const displayTotal = order?.pricing?.total || totalFromParams;
+    const displayTotal = order?.pricing?.total;
+    const gstTotal = order?.pricing?.gstAmount;
     const shippingAddress = order?.shippingAddress;
     const items = order?.items || [];
+    const orderId = order?._id;
 
     return (
         <div className="min-h-[calc(100vh-4rem)] bg-background-primary">
@@ -74,7 +152,7 @@ const CheckoutSuccess = () => {
                         </svg>
                     </div>
 
-                    <h1 className="text-3xl font-display text-text-primary mb-2">
+                    <h1 className="text-3xl font-display font-medium text-text-primary mb-2">
                         Order Placed!
                     </h1>
                     <p className="text-text-secondary">
@@ -91,7 +169,7 @@ const CheckoutSuccess = () => {
                                 Order
                             </p>
                             <p className="font-medium text-text-primary font-mono">
-                                {displayOrderNumber || orderId}
+                                {displayOrderNumber}
                             </p>
                         </div>
                         <div className="text-right">
@@ -101,6 +179,11 @@ const CheckoutSuccess = () => {
                             <p className="font-semibold text-lg text-text-primary">
                                 {formatPrice(displayTotal)}
                             </p>
+                            {gstTotal > 0 && (
+                                <p className="text-xs text-text-secondary mt-0.5">
+                                    incl. GST {formatPrice(gstTotal)}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -121,9 +204,10 @@ const CheckoutSuccess = () => {
                                         </span>
                                         <span className="font-medium text-text-primary shrink-0">
                                             {formatPrice(
-                                                (item.discountedSubtotal ??
-                                                    item.subtotal) *
-                                                    item.quantity,
+                                                item.total ??
+                                                    (item.discountedSubtotal ??
+                                                        item.subtotal) +
+                                                        (item.gstAmount ?? 0),
                                             )}
                                         </span>
                                     </div>

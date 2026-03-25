@@ -36,6 +36,24 @@ export const getOrderById = async (orderId) => {
 };
 
 /**
+ * Get order by order number
+ * @param {string} orderNumber - Human-readable order number (e.g. ORD-2024-0001)
+ * @returns {Promise}
+ */
+export const getOrderByNumber = async (orderNumber) => {
+    try {
+        const response = await axiosInstance.get(
+            `${API_PREFIX}/number/${encodeURIComponent(orderNumber)}`,
+        );
+        logger.info("Order fetched by number", { orderNumber });
+        return response;
+    } catch (error) {
+        logger.error("Failed to fetch order by number:", error);
+        throw error;
+    }
+};
+
+/**
  * Cancel order
  * @param {string} orderId - Order ID
  * @param {string} reason - Cancellation reason
