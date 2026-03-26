@@ -71,7 +71,7 @@ const initiateCheckout = async (userId, checkoutData) => {
             })
             .populate({
                 path: "items.variantId",
-                select: "sku size color weight sellingPrice stockQuantity images gemstoneCharges priceBreakdown",
+                select: "sku variantName size color weight sellingPrice stockQuantity images gemstoneCharges priceBreakdown",
             });
 
         if (!cart || cart.items.length === 0) {
@@ -223,6 +223,7 @@ const calculateCheckoutPricing = async (
             variant: {
                 _id: variant._id,
                 sku: variant.sku,
+                variantName: variant.variantName,
                 size: variant.size,
                 color: variant.color,
                 weight: variant.weight,
@@ -458,6 +459,7 @@ const placeOrderCOD = async (userId, checkoutData) => {
             product: item.product._id,
             variant: item.variant._id,
             productName: item.product.name,
+            variantName: item.variant.variantName,
             sku: item.variant.sku,
             image: item.variant.images?.[0] || item.product.images?.[0],
             quantity: item.quantity,

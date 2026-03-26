@@ -38,6 +38,9 @@ const orderItemSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        variantName: {
+            type: String,
+        },
         sku: {
             type: String,
             required: true,
