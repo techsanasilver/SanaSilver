@@ -129,7 +129,6 @@ const CheckoutSuccess = () => {
     const gstTotal = order?.pricing?.gstAmount;
     const shippingAddress = order?.shippingAddress;
     const items = order?.items || [];
-    const orderId = order?._id;
 
     return (
         <div className="min-h-[calc(100vh-4rem)] bg-background-primary">
@@ -245,9 +244,9 @@ const CheckoutSuccess = () => {
 
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                    {orderId && (
+                    {orderNumber && (
                         <Link
-                            to={`/orders/${orderId}`}
+                            to={`/orders/${orderNumber}`}
                             className="flex-1 py-3 bg-text-primary text-white text-center font-medium rounded-sm hover:bg-text-secondary transition-colors text-sm"
                         >
                             VIEW ORDER DETAILS

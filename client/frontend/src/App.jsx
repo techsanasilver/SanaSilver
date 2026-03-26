@@ -64,7 +64,7 @@ const App = () => {
                     }
                 />
                 <Route
-                    path="/orders/:id"
+                    path="/orders/:orderNumber"
                     element={
                         <ProtectedRoute>
                             <OrderDetail />

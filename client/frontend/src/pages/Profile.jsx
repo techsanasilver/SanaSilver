@@ -52,13 +52,13 @@ const validateAddress = (data) => {
     return null;
 };
 
-const ORDER_STATUS_STYLES = {
-    pending: "bg-neutral-100 text-text-secondary",
-    confirmed: "bg-blue-50 text-blue-600",
-    shipped: "bg-amber-50 text-amber-600",
-    delivered: "bg-green-50 text-green-600",
-    cancelled: "bg-red-50 text-red-600",
-};
+// const ORDER_STATUS_STYLES = {
+//     pending: "bg-neutral-100 text-text-secondary",
+//     confirmed: "bg-blue-50 text-blue-600",
+//     shipped: "bg-amber-50 text-amber-600",
+//     delivered: "bg-green-50 text-green-600",
+//     cancelled: "bg-red-50 text-red-600",
+// };
 
 const makeChangeHandler = (setter) => (e) => {
     const { name, type, checked, value } = e.target;
@@ -777,7 +777,7 @@ const Profile = () => {
                                     {recentOrders.map((order) => (
                                         <Link
                                             key={order._id}
-                                            to={`/orders/${order._id}`}
+                                            to={`/orders/${order.orderNumber}`}
                                             className="flex items-center justify-between py-4 -mx-6 px-6 hover:bg-neutral-50 transition-colors"
                                         >
                                             <div>
@@ -803,7 +803,7 @@ const Profile = () => {
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span
+                                                {/* <span
                                                     className={`text-xs px-2 py-0.5 rounded-xs capitalize ${
                                                         ORDER_STATUS_STYLES[
                                                             order.orderStatus
@@ -812,7 +812,7 @@ const Profile = () => {
                                                     }`}
                                                 >
                                                     {order.orderStatus}
-                                                </span>
+                                                </span> */}
                                                 <span className="text-sm font-medium text-text-primary">
                                                     ₹
                                                     {order.pricing.total.toLocaleString(
