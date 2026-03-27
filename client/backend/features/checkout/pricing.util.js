@@ -148,36 +148,56 @@ export const calculateDiscount = (subtotal, coupon) => {
 };
 
 /**
- * Distribute discount proportionally across items
- * @param {Array} items - Cart items with subtotals
- * @param {Number} totalDiscount - Total discount to distribute
- * @returns {Array} Items with individual discount amounts
+ * Distribute coupon discount proportionally across items in GST-inclusive space.
+ * Distributing in pre-GST space causes ±0.01 errors because rounding the last
+ * item's unrounded remainder in pre-GST then re-applying GST drifts the total.
+ * Distributing the GST-inclusive face value directly ensures each item's total
+ * is exact: total = sellingPrice × qty − faceDiscount, taxableValue is
+ * back-calculated so there is no re-aggregation error.
+ *
+ * @param {Array} items - Eligible cart items (must have sellingPrice, quantity, baseAmount, gstRate)
+ * @param {Number} couponFaceValue - GST-inclusive discount total to distribute
+ * @returns {Array} Items with discountBase, taxableValue set
  */
-export const distributeDiscountProportionally = (items, totalDiscount) => {
-    if (totalDiscount === 0) {
-        return items.map((item) => ({ ...item, discount: 0 }));
+export const distributeDiscountProportionally = (items, couponFaceValue) => {
+    if (couponFaceValue === 0) {
+        return items.map((item) => ({
+            ...item,
+            discountBase: 0,
+            taxableValue: item.baseAmount,
+        }));
     }
 
-    const cartSubtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-    let allocatedDiscount = 0;
+    const totalSellingPrice = items.reduce(
+        (sum, item) => sum + (item.sellingPrice || 0) * item.quantity,
+        0,
+    );
+    let allocatedFaceDiscount = 0;
 
     return items.map((item, index) => {
-        let itemDiscount;
+        const itemSellingTotal = (item.sellingPrice || 0) * item.quantity;
+        let itemFaceDiscount;
 
-        // Last item gets remaining discount to handle rounding errors
         if (index === items.length - 1) {
-            itemDiscount = totalDiscount - allocatedDiscount;
+            // Last item absorbs the remainder — keeps sum exact
+            itemFaceDiscount = couponFaceValue - allocatedFaceDiscount;
         } else {
-            // Proportional discount based on item's contribution to cart
-            itemDiscount = (totalDiscount * item.subtotal) / cartSubtotal;
-            itemDiscount = roundPrice(itemDiscount);
-            allocatedDiscount += itemDiscount;
+            itemFaceDiscount =
+                (couponFaceValue * itemSellingTotal) / totalSellingPrice;
+            itemFaceDiscount = roundPrice(itemFaceDiscount);
+            allocatedFaceDiscount += itemFaceDiscount;
         }
+
+        // Total is derived directly from the GST-inclusive price minus face discount
+        const itemTotal = roundPrice(itemSellingTotal - itemFaceDiscount);
+        // Back-calculate pre-GST taxable value from the GST-inclusive total
+        const taxableValue = roundPrice(itemTotal / (1 + item.gstRate / 100));
+        const discountBase = roundPrice(item.baseAmount - taxableValue);
 
         return {
             ...item,
-            discount: itemDiscount,
-            discountedSubtotal: item.subtotal - itemDiscount,
+            discountBase,
+            taxableValue,
         };
     });
 };

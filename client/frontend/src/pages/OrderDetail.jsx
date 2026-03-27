@@ -295,18 +295,10 @@ const OrderDetail = () => {
                                                     <div className="text-right shrink-0">
                                                         <p className="font-semibold text-sm text-text-primary">
                                                             {formatPrice(
-                                                                item.total,
+                                                                item.sellingPrice *
+                                                                    item.quantity,
                                                             )}
                                                         </p>
-                                                        {item.discount > 0 && (
-                                                            <p className="text-xs text-text-secondary line-through">
-                                                                {formatPrice(
-                                                                    item.subtotal +
-                                                                        (item.gstAmount ??
-                                                                            0),
-                                                                )}
-                                                            </p>
-                                                        )}
                                                         <p className="text-xs text-text-secondary/70">
                                                             incl. GST
                                                         </p>

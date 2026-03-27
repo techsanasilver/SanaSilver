@@ -203,15 +203,30 @@ const CheckoutSuccess = () => {
                                         </span>
                                         <span className="font-medium text-text-primary shrink-0">
                                             {formatPrice(
-                                                item.total ??
-                                                    (item.discountedSubtotal ??
-                                                        item.subtotal) +
-                                                        (item.gstAmount ?? 0),
+                                                item.sellingPrice *
+                                                    item.quantity,
                                             )}
                                         </span>
                                     </div>
                                 ))}
                             </div>
+                            {order.appliedCoupon?.code &&
+                                order.pricing?.discount > 0 && (
+                                    <div className="flex justify-between text-sm mt-3 pt-3 border-t border-neutral-100">
+                                        <span className="text-text-secondary">
+                                            Coupon{" "}
+                                            <span className="bg-neutral-100 text-text-secondary px-1.5 py-0.5 rounded-sm text-xs ml-1">
+                                                {order.appliedCoupon.code}
+                                            </span>
+                                        </span>
+                                        <span className="text-text-primary font-medium shrink-0">
+                                            −{" "}
+                                            {formatPrice(
+                                                order.pricing.discount,
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
                         </div>
                     )}
 

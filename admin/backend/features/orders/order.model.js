@@ -32,25 +32,58 @@ const orderItemSchema = new mongoose.Schema(
             type: Number,
             min: [0, "Weight cannot be negative"],
         },
-        pricePerUnit: {
+        metalValue: {
             type: Number,
-            required: [true, "Price per unit is required"],
-            min: [0, "Price cannot be negative"],
+            default: 0,
+            min: [0, "Metal value cannot be negative"],
         },
         makingCharges: {
             type: Number,
             default: 0,
             min: [0, "Making charges cannot be negative"],
         },
-        gst: {
+        gemstoneCharges: {
+            type: Number,
+            default: 0,
+            min: [0, "Gemstone charges cannot be negative"],
+        },
+        // GST-inclusive selling price per unit (what the customer saw)
+        sellingPrice: {
+            type: Number,
+            min: [0, "Selling price cannot be negative"],
+        },
+        // Pre-GST base price for this line
+        baseAmount: {
+            type: Number,
+            required: [true, "Base amount is required"],
+            min: [0, "Base amount cannot be negative"],
+        },
+        // Pre-GST discount allocated to this item (internal)
+        discountBase: {
+            type: Number,
+            default: 0,
+            min: [0, "Discount cannot be negative"],
+        },
+        // Pre-GST taxable value after discount (GST applied on this)
+        taxableValue: {
+            type: Number,
+            min: [0, "Taxable value cannot be negative"],
+        },
+        gstRate: {
+            type: Number,
+            default: 0,
+            min: [0, "GST rate cannot be negative"],
+        },
+        gstAmount: {
             type: Number,
             default: 0,
             min: [0, "GST cannot be negative"],
         },
-        subtotal: {
+        // Final item total paid by customer (= taxableValue + gstAmount)
+        total: {
             type: Number,
-            required: [true, "Subtotal is required"],
-            min: [0, "Subtotal cannot be negative"],
+            required: [true, "Total is required"],
+            min: [0, "Total cannot be negative"],
         },
     },
     { _id: true },
@@ -145,20 +178,28 @@ const orderSchema = new mongoose.Schema(
             required: [true, "Billing address is required"],
         },
         pricing: {
-            subtotal: {
+            itemsSubtotal: {
                 type: Number,
                 required: true,
                 min: [0, "Subtotal cannot be negative"],
+            },
+            discount: {
+                type: Number,
+                default: 0,
+                min: [0, "Discount cannot be negative"],
+            },
+            discountedSubtotal: {
+                type: Number,
+                min: [0, "Discounted subtotal cannot be negative"],
             },
             shippingCharges: {
                 type: Number,
                 default: 0,
                 min: [0, "Shipping charges cannot be negative"],
             },
-            discount: {
+            taxableAmount: {
                 type: Number,
-                default: 0,
-                min: [0, "Discount cannot be negative"],
+                min: [0, "Taxable amount cannot be negative"],
             },
             gst: {
                 type: Number,
@@ -231,8 +272,15 @@ const orderSchema = new mongoose.Schema(
         customerNote: {
             type: String,
         },
-        couponCode: {
-            type: String,
+        appliedCoupon: {
+            code: { type: String, uppercase: true },
+            description: { type: String },
+            discountType: {
+                type: String,
+                enum: ["percentage", "flat", "free_shipping"],
+            },
+            discountValue: { type: Number, min: 0 },
+            discountAmount: { type: Number, min: 0 },
         },
     },
     {
@@ -246,6 +294,7 @@ orderSchema.index({ customer: 1, createdAt: -1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ "payment.status": 1 });
 orderSchema.index({ createdAt: -1 });
+orderSchema.index({ "appliedCoupon.code": 1 }, { sparse: true });
 
 // Auto-generate order number
 orderSchema.pre("save", async function (next) {

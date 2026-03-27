@@ -236,7 +236,8 @@ const calculateCheckoutPricing = async (
             metalValue: pricing.roundPrice(metalValue),
             makingCharges: pricing.roundPrice(makingCharges),
             gemstoneCharges: pricing.roundPrice(gemstoneCharges),
-            subtotal: pricing.roundPrice(quantitySubtotal),
+            sellingPrice: variant.sellingPrice,
+            baseAmount: pricing.roundPrice(quantitySubtotal),
             gstRate,
         });
     }
@@ -289,7 +290,7 @@ const calculateCheckoutPricing = async (
                     } else {
                         // Pre-GST eligible subtotal (for proportional back-calculation)
                         const eligibleSubtotal = eligibleItems.reduce(
-                            (sum, item) => sum + item.subtotal,
+                            (sum, item) => sum + item.baseAmount,
                             0,
                         );
 
@@ -349,17 +350,18 @@ const calculateCheckoutPricing = async (
     }
 
     // Distribute discount proportionally across eligible items only
-    // First, distribute discount among eligible items
+    // Pass couponFaceValue (GST-inclusive) — the function distributes in
+    // GST-inclusive space to avoid ±0.01 pre-GST rounding errors.
     const eligibleItemsWithDiscount =
-        cartDiscount > 0
+        couponFaceValue > 0
             ? pricing.distributeDiscountProportionally(
                   eligibleItems,
-                  cartDiscount,
+                  couponFaceValue,
               )
             : eligibleItems.map((item) => ({
                   ...item,
-                  discount: 0,
-                  discountedSubtotal: item.subtotal,
+                  discountBase: 0,
+                  taxableValue: item.baseAmount,
               }));
 
     // Merge back: eligible items get their discount, non-eligible items get 0 discount
@@ -377,26 +379,29 @@ const calculateCheckoutPricing = async (
         // Non-eligible items get no discount
         return {
             ...item,
-            discount: 0,
-            discountedSubtotal: item.subtotal,
+            discountBase: 0,
+            taxableValue: item.baseAmount,
         };
     });
 
     // Calculate GST on discounted amounts.
-    // Round discountedSubtotal first so item.total stays consistent with
-    // the cart-level total (which also rounds before summing).
+    // Round taxableValue first so item.total is consistent.
     itemsWithDiscount.forEach((item) => {
         const taxableBase = pricing.roundPrice(
-            item.discountedSubtotal ?? item.subtotal,
+            item.taxableValue ?? item.baseAmount,
         );
-        item.discountedSubtotal = taxableBase;
+        item.taxableValue = taxableBase;
         const gstAmount = pricing.calculateGST(taxableBase, item.gstRate);
         item.gstAmount = pricing.roundPrice(gstAmount);
         item.total = pricing.roundPrice(taxableBase + gstAmount);
     });
 
-    // Calculate cart-level pricing
-    const discountedSubtotal = itemsSubtotal - cartDiscount;
+    // Calculate cart-level pricing.
+    // Derive discountedSubtotal from item taxableValues — more accurate than
+    // itemsSubtotal − cartDiscount since it reflects the same rounding used per item.
+    const discountedSubtotal = pricing.roundPrice(
+        itemsWithDiscount.reduce((sum, item) => sum + item.taxableValue, 0),
+    );
 
     // Calculate shipping charges (free if coupon provides free shipping)
     let shippingCharges = pricing.calculateShippingCharges(discountedSubtotal);
@@ -409,7 +414,12 @@ const calculateCheckoutPricing = async (
         (sum, item) => sum + item.gstAmount,
         0,
     );
-    const total = taxableAmount + gst;
+    // Derive total from rounded item totals to avoid re-summing pre-GST aggregates
+    // which can introduce ±0.01 floating-point differences.
+    const total = pricing.roundPrice(
+        itemsWithDiscount.reduce((sum, item) => sum + item.total, 0) +
+            shippingCharges,
+    );
 
     const pricingSummary = {
         itemsSubtotal: pricing.roundPrice(itemsSubtotal),
@@ -467,9 +477,10 @@ const placeOrderCOD = async (userId, checkoutData) => {
             metalValue: item.metalValue,
             makingCharges: item.makingCharges,
             gemstoneCharges: item.gemstoneCharges,
-            subtotal: item.subtotal, // Line total (all qty)
-            discount: item.discount,
-            discountedSubtotal: item.discountedSubtotal, // Line total (all qty)
+            sellingPrice: item.sellingPrice,
+            baseAmount: item.baseAmount,
+            discountBase: item.discountBase,
+            taxableValue: item.taxableValue,
             gstRate: item.gstRate,
             gstAmount: item.gstAmount,
             total: item.total,
@@ -499,7 +510,6 @@ const placeOrderCOD = async (userId, checkoutData) => {
                 discountValue: validatedData.pricing.coupon.discountValue,
                 discountAmount: validatedData.pricing.coupon.discountApplied,
             };
-            orderData.couponCode = validatedData.pricing.coupon.code;
         }
 
         // 3. Create order

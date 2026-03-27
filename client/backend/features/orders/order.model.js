@@ -78,19 +78,29 @@ const orderItemSchema = new mongoose.Schema(
             default: 0,
             min: 0,
         },
-        subtotal: {
+
+        // GST-inclusive selling price per unit (what the customer saw on the product page)
+        sellingPrice: {
+            type: Number,
+            min: 0,
+        },
+
+        // Pre-GST base price for this line (sellingPrice back-calculated × qty)
+        baseAmount: {
             type: Number,
             required: true,
             min: 0,
         },
 
-        // Discount (if coupon applied)
-        discount: {
+        // Pre-GST discount allocated to this item from the coupon (internal, not customer-facing)
+        discountBase: {
             type: Number,
             default: 0,
             min: 0,
         },
-        discountedSubtotal: {
+
+        // Pre-GST taxable value after discount (= baseAmount − discountBase; GST is applied on this)
+        taxableValue: {
             type: Number,
             min: 0,
         },
@@ -107,7 +117,7 @@ const orderItemSchema = new mongoose.Schema(
             required: true,
         },
 
-        // Final item total
+        // Final item total paid by customer (= taxableValue + gstAmount)
         total: {
             type: Number,
             required: true,
@@ -338,9 +348,6 @@ const orderSchema = new mongoose.Schema(
             deliveredAt: { type: Date },
         },
 
-        // Coupon info
-        couponCode: { type: String },
-
         // Notes
         notes: { type: String }, // Admin notes
         customerNote: { type: String }, // Customer's special instructions
@@ -359,6 +366,7 @@ orderSchema.index({ customer: 1, createdAt: -1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ "payment.status": 1 });
 orderSchema.index({ createdAt: -1 });
+orderSchema.index({ "appliedCoupon.code": 1 }, { sparse: true });
 
 // ============================================================================
 // PRE-VALIDATE HOOKS
