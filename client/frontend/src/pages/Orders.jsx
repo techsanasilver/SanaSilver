@@ -114,7 +114,7 @@ const Orders = () => {
 
                 {/* Loading skeletons */}
                 {loading && !error && (
-                    <div className="space-y-3 max-w-3xl">
+                    <div className="space-y-3">
                         {Array.from({ length: 4 }).map((_, i) => (
                             <OrderSkeleton key={i} />
                         ))}
@@ -177,7 +177,7 @@ const Orders = () => {
 
                 {/* Pagination */}
                 {!loading && pagination && pagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-8 max-w-3xl text-sm">
+                    <div className="flex items-center justify-between mt-8 text-sm">
                         <button
                             disabled={!pagination.hasPrev}
                             onClick={() => setPage((p) => p - 1)}

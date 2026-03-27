@@ -34,7 +34,7 @@ const formatPrice = (amount) =>
 const Skeleton = () => (
     <div className="min-h-[calc(100vh-4rem)] bg-background-primary">
         <div className="px-4 lg:px-8 xl:px-16 py-8 lg:py-12 animate-pulse">
-            <div className="max-w-4xl mx-auto">
+            <div className="">
                 <div className="flex items-start justify-between mb-8">
                     <div className="space-y-3">
                         <div className="h-8 bg-neutral-200 rounded w-56" />
