@@ -1,128 +1,132 @@
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+
+/**
+ * User model for the admin backend.
+ * Must stay in sync with client/backend/features/auth/user.model.js
+ * since both connect to the same MongoDB collection.
+ * Admin never creates users — this model is used purely for reads/populates.
+ */
 
 const addressSchema = new mongoose.Schema(
     {
         type: {
             type: String,
-            enum: ["home", "work", "other"],
+            enum: ["home", "office", "other"],
             default: "home",
         },
         name: {
             type: String,
             required: true,
+            trim: true,
+            maxlength: [100, "Name cannot exceed 100 characters"],
         },
         phone: {
             type: String,
             required: true,
+            trim: true,
+            validate: {
+                validator: (v) => /^[6-9]\d{9}$|^\+91[6-9]\d{9}$/.test(v),
+                message: "Please provide a valid 10-digit Indian mobile number",
+            },
         },
-        line1: {
+        addressLine1: {
             type: String,
-            required: [true, "Address line 1 is required"],
+            required: true,
+            trim: true,
+            maxlength: [200, "Address cannot exceed 200 characters"],
         },
-        line2: {
+        addressLine2: {
             type: String,
+            trim: true,
         },
         city: {
             type: String,
-            required: [true, "City is required"],
+            required: true,
+            trim: true,
+            maxlength: [50, "City cannot exceed 50 characters"],
         },
         state: {
             type: String,
-            required: [true, "State is required"],
+            required: true,
+            trim: true,
+            maxlength: [50, "State cannot exceed 50 characters"],
         },
         pincode: {
             type: String,
-            required: [true, "Pincode is required"],
+            required: true,
+            trim: true,
+            validate: {
+                validator: (v) => /^\d{6}$/.test(v),
+                message: "Pincode must be exactly 6 digits",
+            },
         },
-        country: {
+        landmark: {
             type: String,
-            default: "India",
+            trim: true,
         },
         isDefault: {
             type: Boolean,
             default: false,
         },
     },
-    { _id: true }
+    { _id: true },
 );
 
 const userSchema = new mongoose.Schema(
     {
-        name: {
-            type: String,
-            required: [true, "Name is required"],
-            trim: true,
-        },
-        email: {
-            type: String,
-            required: [true, "Email is required"],
-            unique: true,
-            lowercase: true,
-            trim: true,
-            match: [
-                /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-                "Please provide a valid email",
-            ],
-        },
-        password: {
-            type: String,
-            required: [true, "Password is required"],
-            minlength: [8, "Password must be at least 8 characters"],
-            select: false,
-        },
         phone: {
             type: String,
             required: [true, "Phone number is required"],
-            trim: true,
-        },
-        addresses: {
-            type: [addressSchema],
-            default: [],
-        },
-        wishlist: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Product",
+            unique: true,
+            validate: {
+                validator: function (v) {
+                    return /^\+91[6-9]\d{9}$/.test(v);
+                },
+                message: "Please provide a valid Indian phone number",
             },
-        ],
+        },
+        firstName: {
+            type: String,
+            trim: true,
+            maxlength: [50, "First name cannot exceed 50 characters"],
+        },
+        lastName: {
+            type: String,
+            trim: true,
+            maxlength: [50, "Last name cannot exceed 50 characters"],
+        },
+        email: {
+            type: String,
+            trim: true,
+            lowercase: true,
+            validate: {
+                validator: function (v) {
+                    if (!v) return true;
+                    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+                },
+                message: "Please provide a valid email address",
+            },
+        },
+        addresses: [addressSchema],
         isActive: {
             type: Boolean,
             default: true,
         },
-        customerSince: {
+        tokenVersion: {
+            type: Number,
+            default: 0,
+        },
+        lastLoginAt: {
             type: Date,
-            default: Date.now,
-        },
-        totalOrders: {
-            type: Number,
-            default: 0,
-        },
-        totalSpent: {
-            type: Number,
-            default: 0,
         },
     },
     {
         timestamps: true,
-    }
+    },
 );
 
-// Hash password before saving
-userSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) {
-        return next();
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-});
-
-// Method to compare password
-userSchema.methods.comparePassword = async function (candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password);
-};
+// Index for faster queries (phone already has unique index)
+userSchema.index({ isActive: 1 });
 
 const User = mongoose.model("User", userSchema);
 

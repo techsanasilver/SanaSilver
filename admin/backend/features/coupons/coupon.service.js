@@ -94,7 +94,7 @@ const getAllCoupons = async (filters = {}, pagination = {}) => {
     const [coupons, total] = await Promise.all([
         Coupon.find(query)
             .populate("applicableCategories", "name")
-            .populate("applicableProducts", "productName")
+            .populate("applicableProducts", "name")
             .populate("createdBy", "name email")
             .populate("updatedBy", "name email")
             .sort(sortOptions)
@@ -121,7 +121,7 @@ const getAllCoupons = async (filters = {}, pagination = {}) => {
 const getCouponById = async (couponId) => {
     const coupon = await Coupon.findById(couponId)
         .populate("applicableCategories", "name")
-        .populate("applicableProducts", "productName")
+        .populate("applicableProducts", "name")
         .populate("applicableUsers", "firstName lastName email phone")
         .populate("createdBy", "name email")
         .populate("updatedBy", "name email")
@@ -142,7 +142,7 @@ const getCouponByCode = async (couponCode) => {
         code: couponCode.toUpperCase(),
     })
         .populate("applicableCategories", "name")
-        .populate("applicableProducts", "productName")
+        .populate("applicableProducts", "name")
         .lean();
 
     if (!coupon) {

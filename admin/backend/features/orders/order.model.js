@@ -1,5 +1,20 @@
 import mongoose from "mongoose";
 
+// ============================================================================
+// COUNTER SCHEMA (atomic order number generation)
+// ============================================================================
+
+const counterSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    seq: { type: Number, default: 0 },
+});
+
+const Counter = mongoose.model("Counter", counterSchema);
+
+// ============================================================================
+// SUB-SCHEMAS
+// ============================================================================
+
 const orderItemSchema = new mongoose.Schema(
     {
         product: {
@@ -15,6 +30,9 @@ const orderItemSchema = new mongoose.Schema(
         productName: {
             type: String,
             required: true,
+        },
+        variantName: {
+            type: String,
         },
         sku: {
             type: String,
@@ -212,10 +230,30 @@ const orderSchema = new mongoose.Schema(
                 min: [0, "Total cannot be negative"],
             },
         },
+        // Tax split (for invoice — CGST+SGST intrastate, IGST interstate)
+        taxSplit: {
+            cgst: { type: Number, min: 0 },
+            sgst: { type: Number, min: 0 },
+            igst: { type: Number, min: 0 },
+        },
+
+        // Applied coupon (snapshot at order creation)
+        appliedCoupon: {
+            code: { type: String, uppercase: true },
+            description: { type: String },
+            discountType: {
+                type: String,
+                enum: ["percentage", "flat", "free_shipping"],
+            },
+            discountValue: { type: Number, min: 0 },
+            discountAmount: { type: Number, min: 0 },
+        },
+
+        // Payment details
         payment: {
             method: {
                 type: String,
-                enum: ["razorpay", "cod", "bank-transfer"],
+                enum: ["razorpay", "cod", "wallet"],
                 required: [true, "Payment method is required"],
             },
             status: {
@@ -223,19 +261,13 @@ const orderSchema = new mongoose.Schema(
                 enum: ["pending", "paid", "failed", "refunded"],
                 default: "pending",
             },
-            razorpayOrderId: {
-                type: String,
-            },
-            razorpayPaymentId: {
-                type: String,
-            },
-            razorpaySignature: {
-                type: String,
-            },
-            paidAt: {
-                type: Date,
-            },
+            razorpayOrderId: { type: String },
+            razorpayPaymentId: { type: String },
+            razorpaySignature: { type: String },
+            paidAt: { type: Date },
         },
+
+        // Order status
         orderStatus: {
             type: String,
             enum: [
@@ -248,47 +280,35 @@ const orderSchema = new mongoose.Schema(
             ],
             default: "pending",
         },
+
+        // Status history timeline
         statusHistory: {
             type: [statusHistorySchema],
             default: [],
         },
+
+        // Shipping/Tracking
         tracking: {
-            courier: {
-                type: String,
-            },
-            trackingNumber: {
-                type: String,
-            },
-            shippedAt: {
-                type: Date,
-            },
-            deliveredAt: {
-                type: Date,
-            },
+            courier: { type: String },
+            trackingNumber: { type: String },
+            shippedAt: { type: Date },
+            estimatedDelivery: { type: Date },
+            deliveredAt: { type: Date },
         },
-        notes: {
-            type: String,
-        },
-        customerNote: {
-            type: String,
-        },
-        appliedCoupon: {
-            code: { type: String, uppercase: true },
-            description: { type: String },
-            discountType: {
-                type: String,
-                enum: ["percentage", "flat", "free_shipping"],
-            },
-            discountValue: { type: Number, min: 0 },
-            discountAmount: { type: Number, min: 0 },
-        },
+
+        // Notes
+        notes: { type: String }, // Admin notes
+        customerNote: { type: String }, // Customer's special instructions
     },
     {
         timestamps: true,
     },
 );
 
-// Indexes for faster queries
+// ============================================================================
+// INDEXES
+// ============================================================================
+
 // orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ customer: 1, createdAt: -1 });
 orderSchema.index({ orderStatus: 1 });
@@ -296,34 +316,60 @@ orderSchema.index({ "payment.status": 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ "appliedCoupon.code": 1 }, { sparse: true });
 
-// Auto-generate order number
-orderSchema.pre("save", async function (next) {
+// ============================================================================
+// PRE-VALIDATE HOOK (order number generation — atomic, race-condition safe)
+// ============================================================================
+
+/**
+ * Auto-generate order number BEFORE validation.
+ * Uses pre('validate') so the generated value is available when Mongoose
+ * runs required-field checks. Uses an atomic counter to avoid duplicates.
+ * Admin never creates orders, so this hook is a no-op in practice.
+ */
+orderSchema.pre("validate", async function () {
     if (!this.orderNumber) {
         const date = new Date();
         const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-        const count = await mongoose.model("Order").countDocuments({
-            createdAt: {
-                $gte: new Date(date.setHours(0, 0, 0, 0)),
-            },
-        });
-        this.orderNumber = `ORD-${dateStr}-${String(count + 1).padStart(
-            4,
-            "0",
-        )}`;
+
+        const counter = await Counter.findOneAndUpdate(
+            { _id: `orders-${dateStr}` },
+            { $inc: { seq: 1 } },
+            { new: true, upsert: true },
+        );
+
+        this.orderNumber = `ORD-${dateStr}-${String(counter.seq).padStart(4, "0")}`;
     }
-    next();
 });
 
-// Add status to history when order status changes
-orderSchema.pre("save", function (next) {
-    if (this.isModified("orderStatus")) {
-        this.statusHistory.push({
-            status: this.orderStatus,
-            timestamp: new Date(),
-        });
+// ============================================================================
+// INSTANCE METHODS
+// ============================================================================
+
+orderSchema.methods.canBeCancelled = function () {
+    const cancellableStatuses = ["pending", "confirmed"];
+    return cancellableStatuses.includes(this.orderStatus);
+};
+
+orderSchema.methods.canBeReturned = function () {
+    if (this.orderStatus !== "delivered") return false;
+    const deliveryDate = this.tracking?.deliveredAt;
+    if (!deliveryDate) return false;
+    const daysSinceDelivery = Math.floor(
+        (Date.now() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    return daysSinceDelivery <= 7;
+};
+
+orderSchema.methods.getCurrentStatus = function () {
+    if (this.statusHistory.length === 0) {
+        return { status: this.orderStatus, timestamp: this.createdAt };
     }
-    next();
-});
+    return this.statusHistory[this.statusHistory.length - 1];
+};
+
+// ============================================================================
+// EXPORT MODEL
+// ============================================================================
 
 const Order = mongoose.model("Order", orderSchema);
 

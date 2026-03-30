@@ -305,6 +305,14 @@ const addShippingDetails = async (orderId, shippingDetails, adminId) => {
             throw new Error("Order not found");
         }
 
+        // Cannot add shipping to a terminal or unprepared order
+        if (order.orderStatus === "delivered") {
+            throw new Error("Order has already been delivered");
+        }
+        if (order.orderStatus === "cancelled") {
+            throw new Error("Cannot add shipping to a cancelled order");
+        }
+
         // Update tracking information
         order.tracking = {
             courier,
@@ -412,17 +420,17 @@ const cancelOrderByAdmin = async (orderId, reason, adminId) => {
             updatedBy: adminId,
         });
 
-        await order.save({ session });
-
-        // Restore stock (import from client order.service.js or duplicate logic)
-        await restoreStock(order.items, session);
-
-        // If payment was made, mark for refund
-        if (order.payment.status === "paid") {
+        // If payment was made, mark for refund (consolidate into single save)
+        const refundRequired = order.payment.status === "paid";
+        if (refundRequired) {
             order.payment.status = "refunded";
             order.notes = (order.notes || "") + `\nRefund required: ${reason}`;
-            await order.save({ session });
         }
+
+        await order.save({ session });
+
+        // Restore stock
+        await restoreStock(order.items, session);
 
         await session.commitTransaction();
 
@@ -433,7 +441,7 @@ const cancelOrderByAdmin = async (orderId, reason, adminId) => {
         return {
             success: true,
             order,
-            refundRequired: order.payment.status === "refunded",
+            refundRequired,
         };
     } catch (error) {
         await session.abortTransaction();

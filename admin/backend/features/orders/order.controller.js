@@ -101,7 +101,7 @@ const updateOrderStatus = async (req, res) => {
     try {
         const { orderId } = req.params;
         const { status, note } = req.body;
-        const adminId = req.user.userId;
+        const adminId = req.admin._id;
 
         if (!status) {
             return apiResponse.badRequest(res, "Status is required");
@@ -154,7 +154,7 @@ const addShippingDetails = async (req, res) => {
     try {
         const { orderId } = req.params;
         const { courier, trackingNumber, estimatedDelivery } = req.body;
-        const adminId = req.user.userId;
+        const adminId = req.admin._id;
 
         if (!courier || !trackingNumber) {
             return apiResponse.badRequest(
@@ -181,6 +181,13 @@ const addShippingDetails = async (req, res) => {
             return apiResponse.notFound(res, "Order not found");
         }
 
+        if (
+            error.message.includes("already been delivered") ||
+            error.message.includes("Cannot add shipping")
+        ) {
+            return apiResponse.badRequest(res, error.message);
+        }
+
         return apiResponse.serverError(res, "Failed to add shipping details");
     }
 };
@@ -192,7 +199,7 @@ const addShippingDetails = async (req, res) => {
 const markAsDelivered = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const adminId = req.user.userId;
+        const adminId = req.admin._id;
 
         const order = await orderService.markAsDelivered(orderId, adminId);
 
@@ -230,7 +237,7 @@ const cancelOrder = async (req, res) => {
     try {
         const { orderId } = req.params;
         const { reason } = req.body;
-        const adminId = req.user.userId;
+        const adminId = req.admin._id;
 
         if (!reason || reason.trim() === "") {
             return apiResponse.badRequest(
@@ -252,7 +259,8 @@ const cancelOrder = async (req, res) => {
         if (
             error.message === "Order not found" ||
             error.message.includes("cannot cancel") ||
-            error.message.includes("already cancelled")
+            error.message.includes("already cancelled") ||
+            error.message.includes("Cannot cancel")
         ) {
             return apiResponse.badRequest(res, error.message);
         }
@@ -269,7 +277,7 @@ const addAdminNote = async (req, res) => {
     try {
         const { orderId } = req.params;
         const { note } = req.body;
-        const adminId = req.user.userId;
+        const adminId = req.admin._id;
 
         if (!note || note.trim() === "") {
             return apiResponse.badRequest(res, "Note is required");
