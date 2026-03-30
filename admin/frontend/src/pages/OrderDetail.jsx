@@ -220,7 +220,7 @@ const OrderDetail = () => {
         return new Intl.NumberFormat("en-IN", {
             style: "currency",
             currency: "INR",
-            maximumFractionDigits: 0,
+            maximumFractionDigits: 2,
         }).format(amount);
     };
 
@@ -497,7 +497,9 @@ const OrderDetail = () => {
                                         {/* Item Total */}
                                         <div className="text-right">
                                             <p className="font-semibold text-gray-900">
-                                                {formatCurrency(item.total)}
+                                                {formatCurrency(
+                                                    item.baseAmount,
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -771,7 +773,7 @@ const OrderDetail = () => {
 
             {/* Status Update Modal */}
             {showStatusModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg max-w-md w-full p-6">
                         <h3 className="text-xl font-semibold mb-4">
                             Update Order Status
@@ -848,7 +850,7 @@ const OrderDetail = () => {
 
             {/* Shipping Modal */}
             {showShippingModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg max-w-md w-full p-6">
                         <h3 className="text-xl font-semibold mb-4">
                             Add Shipping Details
@@ -934,7 +936,7 @@ const OrderDetail = () => {
 
             {/* Cancel Modal */}
             {showCancelModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg max-w-md w-full p-6">
                         <h3 className="text-xl font-semibold mb-4 text-danger">
                             Cancel Order
@@ -990,7 +992,7 @@ const OrderDetail = () => {
 
             {/* Note Modal */}
             {showNoteModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg max-w-md w-full p-6">
                         <h3 className="text-xl font-semibold mb-4">
                             Add Admin Note
