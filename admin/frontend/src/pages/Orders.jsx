@@ -70,9 +70,8 @@ const Orders = () => {
     const paymentStatusOptions = [
         { value: "", label: "All Payment Status" },
         { value: "pending", label: "Pending" },
-        { value: "completed", label: "Completed" },
+        { value: "paid", label: "Paid" },
         { value: "failed", label: "Failed" },
-        { value: "refund_pending", label: "Refund Pending" },
         { value: "refunded", label: "Refunded" },
     ];
 
@@ -109,23 +108,27 @@ const Orders = () => {
                 }
             });
 
+            // Map frontend 'search' key to backend 'searchTerm' query param
+            if (params.search) {
+                params.searchTerm = params.search;
+                delete params.search;
+            }
+
             logger.debug("Fetching orders with params:", params);
 
             const response = await getAllOrders(params);
 
             if (response.success) {
-                setOrders(response.data.orders || []);
+                setOrders(response.data || []);
                 // Map API response to pagination state structure
-                if (response.data.pagination) {
+                if (response.meta?.pagination) {
                     setPagination({
-                        currentPage: response.data.pagination.page,
-                        totalPages: response.data.pagination.pages,
-                        totalItems: response.data.pagination.total,
-                        itemsPerPage: response.data.pagination.limit,
-                        hasNextPage:
-                            response.data.pagination.page <
-                            response.data.pagination.pages,
-                        hasPrevPage: response.data.pagination.page > 1,
+                        currentPage: response.meta.pagination.currentPage,
+                        totalPages: response.meta.pagination.totalPages,
+                        totalItems: response.meta.pagination.totalOrders,
+                        itemsPerPage: appliedFilters.limit,
+                        hasNextPage: response.meta.pagination.hasNext,
+                        hasPrevPage: response.meta.pagination.hasPrev,
                     });
                 }
             }
@@ -235,9 +238,8 @@ const Orders = () => {
     const getPaymentStatusColor = (status) => {
         const colors = {
             pending: "bg-warning/10 text-warning",
-            completed: "bg-success/10 text-success",
+            paid: "bg-success/10 text-success",
             failed: "bg-danger/10 text-danger",
-            refund_pending: "bg-warning/10 text-warning",
             refunded: "bg-gray-100 text-gray-800",
         };
         return colors[status] || "bg-gray-100 text-gray-800";
@@ -295,7 +297,14 @@ const Orders = () => {
                                 {stats.totalOrders || 0}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
-                                {stats.period}
+                                {
+                                    {
+                                        today: "Today",
+                                        week: "This Week",
+                                        month: "This Month",
+                                        all: "All Time",
+                                    }[statsPeriod]
+                                }
                             </div>
                         </div>
 
@@ -308,8 +317,7 @@ const Orders = () => {
                                 {formatCurrency(stats.totalRevenue || 0)}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
-                                Avg:{" "}
-                                {formatCurrency(stats.averageOrderValue || 0)}
+                                Avg: {formatCurrency(stats.avgOrderValue || 0)}
                             </div>
                         </div>
 
@@ -319,7 +327,7 @@ const Orders = () => {
                                 Pending Orders
                             </div>
                             <div className="text-3xl font-bold text-warning">
-                                {stats.ordersByStatus?.pending || 0}
+                                {stats.statusBreakdown?.pending || 0}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
                                 Needs attention
@@ -332,7 +340,7 @@ const Orders = () => {
                                 Delivered
                             </div>
                             <div className="text-3xl font-bold text-success">
-                                {stats.ordersByStatus?.delivered || 0}
+                                {stats.statusBreakdown?.delivered || 0}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
                                 Completed successfully
@@ -558,7 +566,7 @@ const Orders = () => {
                                                 <div className="text-sm font-medium text-gray-900">
                                                     {
                                                         order.shippingAddress
-                                                            ?.fullName
+                                                            ?.name
                                                     }
                                                 </div>
                                                 <div className="text-sm text-gray-500">
@@ -576,7 +584,7 @@ const Orders = () => {
                                                     )}
                                                 </div>
                                                 <div className="text-xs text-gray-500">
-                                                    {order.paymentMethod ===
+                                                    {order.payment?.method ===
                                                     "cod"
                                                         ? "COD"
                                                         : "Online"}
@@ -584,18 +592,18 @@ const Orders = () => {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span
-                                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(order.paymentStatus)}`}
+                                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(order.payment?.status)}`}
                                                 >
-                                                    {order.paymentStatus
+                                                    {order.payment?.status
                                                         ?.replace("_", " ")
                                                         .toUpperCase()}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span
-                                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}
+                                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.orderStatus)}`}
                                                 >
-                                                    {order.status?.toUpperCase()}
+                                                    {order.orderStatus?.toUpperCase()}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-500">

@@ -252,9 +252,8 @@ const OrderDetail = () => {
     const getPaymentStatusColor = (status) => {
         const colors = {
             pending: "bg-warning/10 text-warning",
-            completed: "bg-success/10 text-success",
+            paid: "bg-success/10 text-success",
             failed: "bg-danger/10 text-danger",
-            refund_pending: "bg-warning/10 text-warning",
             refunded: "bg-gray-100 text-gray-800",
         };
         return colors[status] || "bg-gray-100 text-gray-800";
@@ -287,7 +286,7 @@ const OrderDetail = () => {
     if (!order) return null;
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex justify-between items-start">
                 <div className="flex items-center gap-4">
@@ -332,9 +331,9 @@ const OrderDetail = () => {
                         Order Status
                     </h3>
                     <span
-                        className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(order.status)}`}
+                        className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(order.orderStatus)}`}
                     >
-                        {order.status?.toUpperCase()}
+                        {order.orderStatus?.toUpperCase()}
                     </span>
                 </div>
 
@@ -344,12 +343,12 @@ const OrderDetail = () => {
                         Payment Status
                     </h3>
                     <span
-                        className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getPaymentStatusColor(order.paymentStatus)}`}
+                        className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getPaymentStatusColor(order.payment?.status)}`}
                     >
-                        {order.paymentStatus?.replace("_", " ").toUpperCase()}
+                        {order.payment?.status?.replace("_", " ").toUpperCase()}
                     </span>
                     <p className="text-xs text-gray-500 mt-2">
-                        {order.paymentMethod === "cod"
+                        {order.payment?.method === "cod"
                             ? "Cash on Delivery"
                             : "Online Payment"}
                     </p>
@@ -370,7 +369,7 @@ const OrderDetail = () => {
             <div className="flex flex-wrap gap-2">
                 <button
                     onClick={() => {
-                        setStatusForm({ status: order.status, note: "" });
+                        setStatusForm({ status: order.orderStatus, note: "" });
                         setShowStatusModal(true);
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
@@ -378,9 +377,9 @@ const OrderDetail = () => {
                     <MdEdit />
                     Update Status
                 </button>
-                {order.status !== "shipped" &&
-                    order.status !== "delivered" &&
-                    order.status !== "cancelled" && (
+                {order.orderStatus !== "shipped" &&
+                    order.orderStatus !== "delivered" &&
+                    order.orderStatus !== "cancelled" && (
                         <button
                             onClick={() => setShowShippingModal(true)}
                             className="flex items-center gap-2 px-4 py-2 bg-info text-white rounded-lg hover:bg-info/90 transition-colors"
@@ -389,7 +388,7 @@ const OrderDetail = () => {
                             Add Shipping
                         </button>
                     )}
-                {order.status === "shipped" && (
+                {order.orderStatus === "shipped" && (
                     <button
                         onClick={handleMarkDelivered}
                         disabled={actionLoading}
@@ -399,8 +398,8 @@ const OrderDetail = () => {
                         Mark Delivered
                     </button>
                 )}
-                {order.status !== "cancelled" &&
-                    order.status !== "delivered" && (
+                {order.orderStatus !== "cancelled" &&
+                    order.orderStatus !== "delivered" && (
                         <button
                             onClick={() => setShowCancelModal(true)}
                             className="flex items-center gap-2 px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/90 transition-colors"
@@ -435,44 +434,61 @@ const OrderDetail = () => {
                                     <div className="flex gap-4">
                                         {/* Product Image */}
                                         <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden shrink-0">
-                                            {item.product?.images?.[0] ? (
-                                                <img
-                                                    src={item.product.images[0]}
-                                                    alt={item.product.name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                    No Image
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                const imgSrc =
+                                                    item.variant?.images?.[0]
+                                                        ?.url ||
+                                                    item.product?.images?.[0]
+                                                        ?.url ||
+                                                    (item.image?.startsWith(
+                                                        "http",
+                                                    )
+                                                        ? item.image
+                                                        : null);
+                                                return imgSrc ? (
+                                                    <img
+                                                        src={imgSrc}
+                                                        alt={
+                                                            item.productName ||
+                                                            item.product?.name
+                                                        }
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                        No Image
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
 
                                         {/* Product Details */}
                                         <div className="flex-1">
                                             <h3 className="font-semibold text-gray-900">
-                                                {item.product?.name ||
+                                                {item.productName ||
+                                                    item.product?.name ||
                                                     "Product Deleted"}
                                             </h3>
                                             <div className="mt-1 space-y-1 text-sm text-gray-600">
-                                                {item.product?.sku && (
-                                                    <p>
-                                                        SKU: {item.product.sku}
+                                                {item.variantName && (
+                                                    <p className="text-gray-500">
+                                                        {item.variantName}
                                                     </p>
+                                                )}
+                                                {item.sku && (
+                                                    <p>SKU: {item.sku}</p>
                                                 )}
                                                 <p>Quantity: {item.quantity}</p>
                                                 <p>
-                                                    Price:{" "}
+                                                    Unit Price (incl. GST):{" "}
                                                     {formatCurrency(
-                                                        item.priceAtPurchase,
+                                                        item.sellingPrice,
                                                     )}
                                                 </p>
-                                                {item.gstAmount > 0 && (
+                                                {item.gstRate > 0 && (
                                                     <p>
-                                                        GST ({item.gstRate}%):{" "}
-                                                        {formatCurrency(
-                                                            item.gstAmount,
-                                                        )}
+                                                        GST Rate: {item.gstRate}
+                                                        %
                                                     </p>
                                                 )}
                                             </div>
@@ -481,9 +497,7 @@ const OrderDetail = () => {
                                         {/* Item Total */}
                                         <div className="text-right">
                                             <p className="font-semibold text-gray-900">
-                                                {formatCurrency(
-                                                    item.totalWithGst,
-                                                )}
+                                                {formatCurrency(item.total)}
                                             </p>
                                         </div>
                                     </div>
@@ -500,21 +514,48 @@ const OrderDetail = () => {
                         </h2>
                         <div className="space-y-3">
                             <div className="flex justify-between text-gray-700">
-                                <span>Items Subtotal:</span>
+                                <span>Items Subtotal (excl. GST):</span>
                                 <span>
                                     {formatCurrency(
                                         order.pricing?.itemsSubtotal || 0,
                                     )}
                                 </span>
                             </div>
-                            <div className="flex justify-between text-gray-700">
-                                <span>GST:</span>
-                                <span>
-                                    {formatCurrency(
-                                        order.pricing?.gstAmount || 0,
-                                    )}
-                                </span>
-                            </div>
+                            {order.pricing?.discount > 0 && (
+                                <>
+                                    <div className="flex justify-between text-success">
+                                        <span className="flex items-center gap-2">
+                                            Coupon Discount (excl. GST):
+                                            {order.appliedCoupon?.code && (
+                                                <span className="text-xs font-medium bg-success/10 px-1.5 py-0.5 rounded">
+                                                    {order.appliedCoupon.code}
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span>
+                                            -{" "}
+                                            {formatCurrency(
+                                                (order.pricing.itemsSubtotal ||
+                                                    0) -
+                                                    (order.pricing
+                                                        .discountedSubtotal ||
+                                                        0),
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-gray-700">
+                                        <span>
+                                            Discounted Subtotal (excl. GST):
+                                        </span>
+                                        <span>
+                                            {formatCurrency(
+                                                order.pricing
+                                                    ?.discountedSubtotal || 0,
+                                            )}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
                             <div className="flex justify-between text-gray-700">
                                 <span>Shipping Charges:</span>
                                 <span>
@@ -523,22 +564,12 @@ const OrderDetail = () => {
                                     )}
                                 </span>
                             </div>
-                            {order.pricing?.discountApplied > 0 && (
-                                <div className="flex justify-between text-success">
-                                    <span>Discount Applied:</span>
-                                    <span>
-                                        -{" "}
-                                        {formatCurrency(
-                                            order.pricing.discountApplied,
-                                        )}
-                                    </span>
-                                </div>
-                            )}
-                            {order.appliedCoupon && (
-                                <div className="text-sm text-gray-500">
-                                    Coupon: {order.appliedCoupon.code}
-                                </div>
-                            )}
+                            <div className="flex justify-between text-gray-700">
+                                <span>GST:</span>
+                                <span>
+                                    {formatCurrency(order.pricing?.gst || 0)}
+                                </span>
+                            </div>
                             <div className="pt-3 border-t border-gray-200">
                                 <div className="flex justify-between text-lg font-bold text-gray-900">
                                     <span>Total:</span>
@@ -552,8 +583,8 @@ const OrderDetail = () => {
                         </div>
                     </div>
 
-                    {/* Shipping Details */}
-                    {order.shippingDetails && (
+                    {/* Tracking */}
+                    {order.tracking?.courier && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                                 <MdLocalShipping />
@@ -564,22 +595,21 @@ const OrderDetail = () => {
                                     <span className="font-medium">
                                         Courier:
                                     </span>{" "}
-                                    {order.shippingDetails.courier}
+                                    {order.tracking.courier}
                                 </p>
                                 <p>
                                     <span className="font-medium">
                                         Tracking Number:
                                     </span>{" "}
-                                    {order.shippingDetails.trackingNumber}
+                                    {order.tracking.trackingNumber}
                                 </p>
-                                {order.shippingDetails.estimatedDelivery && (
+                                {order.tracking.estimatedDelivery && (
                                     <p>
                                         <span className="font-medium">
                                             Estimated Delivery:
                                         </span>{" "}
                                         {formatDate(
-                                            order.shippingDetails
-                                                .estimatedDelivery,
+                                            order.tracking.estimatedDelivery,
                                         )}
                                     </p>
                                 )}
@@ -588,27 +618,15 @@ const OrderDetail = () => {
                     )}
 
                     {/* Admin Notes */}
-                    {order.adminNotes && order.adminNotes.length > 0 && (
+                    {order.notes && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                                 <MdNote />
                                 Admin Notes
                             </h2>
-                            <div className="space-y-3">
-                                {order.adminNotes.map((note, index) => (
-                                    <div
-                                        key={index}
-                                        className="p-3 bg-gray-50 rounded-lg"
-                                    >
-                                        <p className="text-gray-700">
-                                            {note.note}
-                                        </p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            {formatDate(note.addedAt)} - Admin
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
+                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
+                                {order.notes}
+                            </pre>
                         </div>
                     )}
                 </div>
@@ -619,6 +637,25 @@ const OrderDetail = () => {
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                         <h2 className="text-xl font-semibold mb-4">Customer</h2>
                         <div className="space-y-3">
+                            {(order.customer?.firstName ||
+                                order.customer?.lastName) && (
+                                <div className="flex items-start gap-3">
+                                    <div className="w-4 mt-1 shrink-0" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">
+                                            Name
+                                        </p>
+                                        <p className="text-gray-900">
+                                            {[
+                                                order.customer.firstName,
+                                                order.customer.lastName,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(" ")}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex items-start gap-3">
                                 <MdEmail className="text-gray-400 mt-1" />
                                 <div>
@@ -626,7 +663,7 @@ const OrderDetail = () => {
                                         Email
                                     </p>
                                     <p className="text-gray-900">
-                                        {order.user?.email || "N/A"}
+                                        {order.customer?.email || "N/A"}
                                     </p>
                                 </div>
                             </div>
@@ -637,7 +674,9 @@ const OrderDetail = () => {
                                         Phone
                                     </p>
                                     <p className="text-gray-900">
-                                        {order.shippingAddress?.phone || "N/A"}
+                                        {order.customer?.phone ||
+                                            order.shippingAddress?.phone ||
+                                            "N/A"}
                                     </p>
                                 </div>
                             </div>
@@ -653,11 +692,11 @@ const OrderDetail = () => {
                         {order.shippingAddress ? (
                             <div className="text-gray-700 space-y-1">
                                 <p className="font-medium">
-                                    {order.shippingAddress.fullName}
+                                    {order.shippingAddress.name}
                                 </p>
-                                <p>{order.shippingAddress.addressLine1}</p>
-                                {order.shippingAddress.addressLine2 && (
-                                    <p>{order.shippingAddress.addressLine2}</p>
+                                <p>{order.shippingAddress.line1}</p>
+                                {order.shippingAddress.line2 && (
+                                    <p>{order.shippingAddress.line2}</p>
                                 )}
                                 <p>
                                     {order.shippingAddress.city},{" "}
@@ -668,12 +707,6 @@ const OrderDetail = () => {
                                 <p className="mt-2">
                                     Phone: {order.shippingAddress.phone}
                                 </p>
-                                {order.shippingAddress.alternatePhone && (
-                                    <p>
-                                        Alternate:{" "}
-                                        {order.shippingAddress.alternatePhone}
-                                    </p>
-                                )}
                             </div>
                         ) : (
                             <p className="text-gray-500">No address provided</p>
@@ -688,11 +721,11 @@ const OrderDetail = () => {
                             </h2>
                             <div className="text-gray-700 space-y-1">
                                 <p className="font-medium">
-                                    {order.billingAddress.fullName}
+                                    {order.billingAddress.name}
                                 </p>
-                                <p>{order.billingAddress.addressLine1}</p>
-                                {order.billingAddress.addressLine2 && (
-                                    <p>{order.billingAddress.addressLine2}</p>
+                                <p>{order.billingAddress.line1}</p>
+                                {order.billingAddress.line2 && (
+                                    <p>{order.billingAddress.line2}</p>
                                 )}
                                 <p>
                                     {order.billingAddress.city},{" "}

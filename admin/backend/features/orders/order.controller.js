@@ -36,8 +36,8 @@ const getAllOrders = async (req, res) => {
 
         return apiResponse.successWithPagination(
             res,
-            result.orders,
             "Orders retrieved successfully",
+            result.orders,
             result.pagination,
         );
     } catch (error) {
@@ -58,8 +58,8 @@ const getOrderStats = async (req, res) => {
 
         return apiResponse.success(
             res,
-            stats,
             "Order statistics retrieved successfully",
+            stats,
         );
     } catch (error) {
         logger.error(`Error fetching order stats: ${error.message}`);
@@ -77,7 +77,7 @@ const getOrderById = async (req, res) => {
 
         const order = await orderService.getOrderById(orderId);
 
-        return apiResponse.success(res, order, "Order retrieved successfully");
+        return apiResponse.success(res, "Order retrieved successfully", order);
     } catch (error) {
         logger.error(`Error fetching order: ${error.message}`);
 
@@ -129,8 +129,8 @@ const updateOrderStatus = async (req, res) => {
 
         return apiResponse.success(
             res,
-            order,
             `Order status updated to ${status}`,
+            order,
         );
     } catch (error) {
         logger.error(`Error updating order status: ${error.message}`);
@@ -171,8 +171,8 @@ const addShippingDetails = async (req, res) => {
 
         return apiResponse.success(
             res,
-            order,
             "Shipping details added successfully",
+            order,
         );
     } catch (error) {
         logger.error(`Error adding shipping details: ${error.message}`);
@@ -205,8 +205,8 @@ const markAsDelivered = async (req, res) => {
 
         return apiResponse.success(
             res,
-            order,
             "Order marked as delivered successfully",
+            order,
         );
     } catch (error) {
         logger.error(`Error marking order as delivered: ${error.message}`);
@@ -252,7 +252,7 @@ const cancelOrder = async (req, res) => {
             adminId,
         );
 
-        return apiResponse.success(res, result, "Order cancelled successfully");
+        return apiResponse.success(res, "Order cancelled successfully", result);
     } catch (error) {
         logger.error(`Error cancelling order: ${error.message}`);
 
@@ -285,7 +285,7 @@ const addAdminNote = async (req, res) => {
 
         const order = await orderService.addAdminNote(orderId, note, adminId);
 
-        return apiResponse.success(res, order, "Note added successfully");
+        return apiResponse.success(res, "Note added successfully", order);
     } catch (error) {
         logger.error(`Error adding admin note: ${error.message}`);
 
@@ -307,8 +307,8 @@ const getRefundPendingOrders = async (req, res) => {
 
         return apiResponse.success(
             res,
-            orders,
             "Refund pending orders retrieved successfully",
+            orders,
         );
     } catch (error) {
         logger.error(`Error fetching refund pending orders: ${error.message}`);
