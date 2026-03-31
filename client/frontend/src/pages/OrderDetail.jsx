@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getOrderByNumber, cancelOrder } from "../api/orders.api";
+import {
+    getOrderByNumber,
+    cancelOrder,
+    downloadInvoice,
+} from "../api/orders.api";
 import { getImageUrl } from "../utils/image.util";
 import logger from "../utils/logger.util";
 
@@ -131,6 +135,8 @@ const OrderDetail = () => {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelling, setCancelling] = useState(false);
     const [cancelError, setCancelError] = useState(null);
+    const [invoiceDownloading, setInvoiceDownloading] = useState(false);
+    const [invoiceError, setInvoiceError] = useState(null);
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -166,6 +172,38 @@ const OrderDetail = () => {
             logger.error("Cancel order failed:", err);
         } finally {
             setCancelling(false);
+        }
+    };
+
+    const handleDownloadInvoice = async () => {
+        if (!order?._id) return;
+        setInvoiceDownloading(true);
+        setInvoiceError(null);
+        try {
+            const response = await downloadInvoice(order._id);
+            const url = URL.createObjectURL(
+                new Blob([response.data], { type: "application/pdf" }),
+            );
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Invoice-${order.orderNumber}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            logger.info("Invoice downloaded", { orderNumber });
+        } catch (err) {
+            const status = err.response?.status;
+            if (status === 404) {
+                setInvoiceError("Invoice is not yet available for this order.");
+            } else {
+                logger.error("Invoice download failed:", err);
+                setInvoiceError(
+                    "Failed to download invoice. Please try again.",
+                );
+            }
+        } finally {
+            setInvoiceDownloading(false);
         }
     };
 
@@ -493,6 +531,22 @@ const OrderDetail = () => {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Download Invoice */}
+                                <button
+                                    onClick={handleDownloadInvoice}
+                                    disabled={invoiceDownloading}
+                                    className="w-full mt-3 px-4 py-2.5 text-sm border border-neutral-400 text-text-primary rounded-sm hover:bg-neutral-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {invoiceDownloading
+                                        ? "Downloading..."
+                                        : "Download Invoice (PDF)"}
+                                </button>
+                                {invoiceError && (
+                                    <p className="text-xs text-red-600 text-center mt-1.5">
+                                        {invoiceError}
+                                    </p>
+                                )}
 
                                 {/* Back to Orders */}
                                 <Link

@@ -13,6 +13,7 @@ import {
     MdLocationOn,
     MdPhone,
     MdEmail,
+    MdReceiptLong,
 } from "react-icons/md";
 import {
     getOrderById,
@@ -22,6 +23,11 @@ import {
     cancelOrder,
     addAdminNote,
 } from "../api/orders.api";
+import {
+    getInvoiceForOrder,
+    generateInvoice,
+    downloadInvoicePDF,
+} from "../api/invoices.api";
 import { handleApiError } from "../utils/axios";
 import logger from "../utils/logger.util";
 import Loader from "../components/common/Loader";
@@ -35,6 +41,10 @@ const OrderDetail = () => {
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [message, setMessage] = useState(null);
+
+    // Invoice state — null: not yet fetched, false: doesn't exist, Object: invoice metadata
+    const [invoice, setInvoice] = useState(null);
+    const [invoiceLoading, setInvoiceLoading] = useState(false);
 
     // Modal states
     const [showStatusModal, setShowStatusModal] = useState(false);
@@ -70,8 +80,21 @@ const OrderDetail = () => {
         }
     };
 
+    // Fetch invoice status for this order
+    const fetchInvoice = async () => {
+        try {
+            const response = await getInvoiceForOrder(orderId);
+            // API returns null data when no invoice exists (not a 404)
+            setInvoice(response.data ?? false);
+        } catch (err) {
+            logger.warn("Could not fetch invoice status:", err);
+            setInvoice(false);
+        }
+    };
+
     useEffect(() => {
         fetchOrder();
+        fetchInvoice();
     }, [orderId]);
 
     // Clear message after 5 seconds
@@ -212,6 +235,60 @@ const OrderDetail = () => {
             });
         } finally {
             setActionLoading(false);
+        }
+    };
+
+    // Handle generate invoice
+    const handleGenerateInvoice = async () => {
+        try {
+            setInvoiceLoading(true);
+            const response = await generateInvoice(orderId);
+            if (response.success) {
+                setInvoice(response.data);
+                setMessage({
+                    type: "success",
+                    text: "Invoice generated successfully",
+                });
+            }
+        } catch (err) {
+            // 409 = invoice already exists; fetch it
+            if (
+                err.response?.status === 409 &&
+                err.response?.data?.data?.invoiceId
+            ) {
+                setInvoice(err.response.data.data);
+                setMessage({ type: "success", text: "Invoice already exists" });
+            } else {
+                logger.error("Error generating invoice:", err);
+                setMessage({ type: "error", text: handleApiError(err) });
+            }
+        } finally {
+            setInvoiceLoading(false);
+        }
+    };
+
+    // Handle download invoice PDF
+    const handleDownloadInvoice = async () => {
+        if (!invoice?.invoiceId && !invoice?._id) return;
+        try {
+            setInvoiceLoading(true);
+            const invoiceId = invoice.invoiceId || invoice._id;
+            const response = await downloadInvoicePDF(invoiceId);
+            const url = URL.createObjectURL(
+                new Blob([response.data], { type: "application/pdf" }),
+            );
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Invoice-${invoice.invoiceNumber}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            logger.error("Error downloading invoice:", err);
+            setMessage({ type: "error", text: "Failed to download invoice" });
+        } finally {
+            setInvoiceLoading(false);
         }
     };
 
@@ -415,6 +492,29 @@ const OrderDetail = () => {
                     <MdNote />
                     Add Note
                 </button>
+                {invoice ? (
+                    <button
+                        onClick={handleDownloadInvoice}
+                        disabled={invoiceLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-50"
+                    >
+                        <MdReceiptLong />
+                        {invoiceLoading ? "Downloading..." : "Download Invoice"}
+                    </button>
+                ) : (
+                    <button
+                        onClick={handleGenerateInvoice}
+                        disabled={invoiceLoading || invoice === null}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+                    >
+                        <MdReceiptLong />
+                        {invoiceLoading
+                            ? "Generating..."
+                            : invoice === null
+                              ? "Checking..."
+                              : "Generate Invoice"}
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

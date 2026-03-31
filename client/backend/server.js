@@ -19,6 +19,7 @@ import wishlistRoutes from "./features/wishlist/wishlist.routes.js";
 import orderRoutes from "./features/orders/order.routes.js";
 import checkoutRoutes from "./features/checkout/checkout.routes.js";
 import couponRoutes from "./features/coupons/coupon.routes.js";
+import invoiceRoutes from "./features/invoices/invoice.routes.js";
 // Add more feature route imports here as you create them
 
 dotenv.config();
@@ -64,6 +65,7 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/coupons", couponRoutes);
+app.use("/api", invoiceRoutes);
 // Add more feature routes here as you create them
 
 // Global error handler (must be last)
