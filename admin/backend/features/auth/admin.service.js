@@ -16,6 +16,7 @@ const ROLE_PERMISSIONS = {
         "users.edit",
         "coupons.*",
         "categories.*",
+        "reviews.*",
     ],
     manager: [
         "products.view",
@@ -23,8 +24,10 @@ const ROLE_PERMISSIONS = {
         "orders.view",
         "orders.edit",
         "categories.view",
+        "reviews.view",
+        "reviews.manage",
     ],
-    staff: ["products.view", "orders.view"],
+    staff: ["products.view", "orders.view", "reviews.view"],
 };
 
 async function registerAdmin(data, createdByAdminId) {
