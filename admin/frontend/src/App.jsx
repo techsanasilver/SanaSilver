@@ -16,6 +16,7 @@ import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Unauthorized from "./pages/Unauthorized";
 import Coupons from "./pages/Coupons";
+import Reviews from "./pages/Reviews";
 
 const App = () => {
     return (
@@ -56,6 +57,7 @@ const App = () => {
                 <Route path="/customers" element={<div>Customers Page</div>} />
                 <Route path="/banners" element={<Banners />} />
                 <Route path="/coupons" element={<Coupons />} />
+                <Route path="/reviews" element={<Reviews />} />
                 <Route path="/bulk-operations" element={<BulkOperations />} />
                 <Route path="/analytics" element={<div>Analytics Page</div>} />
                 <Route path="/settings" element={<div>Settings Page</div>} />
