@@ -306,17 +306,20 @@ const ProductDetail = () => {
                             </h1>
 
                             {/* Ratings */}
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="flex items-center gap-0.5">
-                                    <span className="text-sm xl:text-base font-medium text-text-primary/60 mr-1">
-                                        4.9
+                            {product.ratings?.count > 0 && (
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="flex items-center gap-0.5">
+                                        <span className="text-sm xl:text-base font-medium text-text-primary/60 mr-1">
+                                            {product.ratings.average.toFixed(1)}
+                                        </span>
+                                        <FaStar className="w-3 h-3 text-accent-1" />
+                                    </div>
+                                    <span className="text-sm xl:text-base text-text-primary/60">
+                                        {product.ratings.count} review
+                                        {product.ratings.count !== 1 ? "s" : ""}
                                     </span>
-                                    <FaStar className="w-3 h-3 text-accent-1" />
                                 </div>
-                                <span className="text-sm xl:text-base text-text-primary/60">
-                                    203 reviews
-                                </span>
-                            </div>
+                            )}
 
                             {/* Price & Stock */}
                             {selectedVariant && (
@@ -865,10 +868,10 @@ const ProductDetail = () => {
 
                 {/* Reviews Section - Separate from tabs */}
                 <div className="mt-12 max-w-[90vw] mx-auto">
-                    <h2 className="text-2xl xl:text-3xl font-light text-text-primary mb-6">
-                        Customer Reviews
-                    </h2>
-                    <ProductReviews productId={product._id} />
+                    <ProductReviews
+                        productId={product._id}
+                        productSlug={slug}
+                    />
                 </div>
             </div>
         </div>

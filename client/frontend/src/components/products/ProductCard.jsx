@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { FiShoppingBag } from "react-icons/fi";
-import { FaRegHeart, FaHeart } from "react-icons/fa";
+import { FaRegHeart, FaHeart, FaStar, FaRegStar } from "react-icons/fa";
 
 import { getImageUrl } from "../../utils/image.util";
 import { useWishlist } from "../../context/WishlistContext";
@@ -177,12 +177,7 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
                         {/* Compact rating */}
                         {product.ratings && product.ratings.count > 0 && (
                             <div className="flex items-center gap-1 ml-auto">
-                                <svg
-                                    className="w-3 h-3 text-yellow-400 fill-current shrink-0"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                </svg>
+                                <FaStar className="w-3 h-3 text-accent-1 shrink-0" />
                                 <span className="text-xs text-text-muted">
                                     {product.ratings.average?.toFixed(1)}{" "}
                                     <span className="text-text-muted/70">
@@ -331,53 +326,20 @@ const ProductCard = ({ product, showBadge = false, onQuickAdd }) => {
                     {/* Rating */}
                     {product.ratings && product.ratings.count > 0 && (
                         <div className="flex items-center justify-center gap-2 mb-2">
-                            <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, index) => {
+                            <div className="flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((star) => {
                                     const rating = product.ratings.average || 0;
-                                    const isHalfStar =
-                                        rating > index && rating < index + 1;
-                                    const isFullStar = rating >= index + 1;
-
-                                    return (
-                                        <svg
-                                            key={index}
-                                            className="w-4 h-4"
-                                            fill={
-                                                isFullStar || isHalfStar
-                                                    ? "currentColor"
-                                                    : "none"
-                                            }
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            {isHalfStar ? (
-                                                <defs>
-                                                    <linearGradient
-                                                        id={`half-${product._id}-${index}`}
-                                                    >
-                                                        <stop
-                                                            offset="50%"
-                                                            stopColor="currentColor"
-                                                        />
-                                                        <stop
-                                                            offset="50%"
-                                                            stopColor="transparent"
-                                                        />
-                                                    </linearGradient>
-                                                </defs>
-                                            ) : null}
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={1.5}
-                                                fill={
-                                                    isHalfStar
-                                                        ? `url(#half-${product._id}-${index})`
-                                                        : undefined
-                                                }
-                                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                                            />
-                                        </svg>
+                                    const filled = star <= Math.round(rating);
+                                    return filled ? (
+                                        <FaStar
+                                            key={star}
+                                            className="w-3.5 h-3.5 text-accent-1"
+                                        />
+                                    ) : (
+                                        <FaRegStar
+                                            key={star}
+                                            className="w-3.5 h-3.5 text-accent-1 opacity-40"
+                                        />
                                     );
                                 })}
                             </div>

@@ -17,6 +17,7 @@ import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
+import ProductReviewsPage from "./pages/ProductReviewsPage";
 
 const App = () => {
     return (
@@ -26,6 +27,10 @@ const App = () => {
                 <Route path="/" element={<Home />} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/products/:slug" element={<ProductDetail />} />
+                <Route
+                    path="/products/:slug/reviews"
+                    element={<ProductReviewsPage />}
+                />
                 <Route path="/cart" element={<Cart />} />
 
                 {/* Public Only Routes (redirect if logged in) */}
