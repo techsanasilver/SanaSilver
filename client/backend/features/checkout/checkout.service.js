@@ -18,10 +18,11 @@ import logger from "../../shared/utils/logger.util.js";
 // - Distributes cart-level discounts proportionally across items
 //
 // COUPON SUPPORT:
-// - Infrastructure ready for coupon integration
 // - Accepts optional couponCode parameter
-// - Uses pricing.calculateDiscount() and pricing.distributeDiscountProportionally()
-// - TODO: Uncomment coupon validation code when Coupon model is ready
+// - Filters eligible items per coupon's product/category restrictions
+// - Validates via couponService (dates, usage limits, minOrderValue)
+// - Distributes discount proportionally across eligible items (GST-inclusive space)
+// - Saves coupon snapshot on order and increments usage after commit
 //
 // ============================================================================
 // INITIATE CHECKOUT
