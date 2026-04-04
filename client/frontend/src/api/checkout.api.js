@@ -2,6 +2,7 @@ import axiosInstance from "../utils/axios";
 import logger from "../utils/logger.util";
 
 const API_PREFIX = "/checkout";
+const RAZORPAY_PREFIX = "/razorpay";
 
 /**
  * Place order with Cash on Delivery
@@ -23,18 +24,37 @@ export const placeOrderCOD = async (orderData) => {
 };
 
 /**
- * Create Razorpay order (placeholder - not yet implemented on backend)
+ * Cancel a pending Razorpay order (called on modal dismiss / abandonment)
+ * @param {string} razorpayOrderId
+ * @returns {Promise}
+ */
+export const cancelRazorpayOrder = async (razorpayOrderId) => {
+    try {
+        const response = await axiosInstance.delete(
+            `${RAZORPAY_PREFIX}/pending-order`,
+            { data: { razorpayOrderId } },
+        );
+        logger.info("Razorpay pending order cancelled", { razorpayOrderId });
+        return response;
+    } catch (error) {
+        logger.error("Failed to cancel Razorpay order:", error);
+        throw error;
+    }
+};
+
+/**
+ * Create Razorpay order on the backend
  * @param {object} orderData - { shippingAddressId, billingAddressId, customerNote, couponCode }
  * @returns {Promise}
  */
 export const createRazorpayOrder = async (orderData) => {
     try {
         const response = await axiosInstance.post(
-            `${API_PREFIX}/create-razorpay-order`,
+            `${RAZORPAY_PREFIX}/create-order`,
             orderData,
         );
         logger.info("Razorpay order created", {
-            razorpayOrderId: response.data?.razorpayOrderId,
+            razorpayOrderId: response.data?.data?.razorpayOrderId,
         });
         return response;
     } catch (error) {
@@ -44,14 +64,14 @@ export const createRazorpayOrder = async (orderData) => {
 };
 
 /**
- * Verify Razorpay payment (placeholder - not yet implemented on backend)
+ * Verify Razorpay payment after checkout modal success
  * @param {object} paymentData - { razorpayOrderId, razorpayPaymentId, razorpaySignature }
  * @returns {Promise}
  */
 export const verifyRazorpayPayment = async (paymentData) => {
     try {
         const response = await axiosInstance.post(
-            `${API_PREFIX}/verify-razorpay-payment`,
+            `${RAZORPAY_PREFIX}/verify-payment`,
             paymentData,
         );
         logger.info("Razorpay payment verified");

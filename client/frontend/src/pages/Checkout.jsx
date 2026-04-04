@@ -5,7 +5,12 @@ import { useAuth } from "../context/AuthContext";
 import Loader from "../components/common/Loader";
 import AddressSelector from "../components/checkout/AddressSelector";
 import PaymentMethodSelector from "../components/checkout/PaymentMethodSelector";
-import { placeOrderCOD } from "../api/checkout.api";
+import {
+    placeOrderCOD,
+    createRazorpayOrder,
+    verifyRazorpayPayment,
+    cancelRazorpayOrder,
+} from "../api/checkout.api";
 import { updateProfile } from "../api/auth.api";
 import logger from "../utils/logger.util";
 
@@ -186,6 +191,10 @@ const Checkout = () => {
     const [isPlacing, setIsPlacing] = useState(false);
     const [placeError, setPlaceError] = useState(null);
 
+    // Toggle this flag to enable/disable Razorpay at the frontend.
+    // Keep in sync with RAZORPAY_ENABLED in client/backend/features/razorpay/payment.config.js
+    const razorpayEnabled = false;
+
     // Pre-select default address when user loads
     useEffect(() => {
         if (user?.addresses?.length > 0 && !selectedAddressId) {
@@ -326,36 +335,128 @@ const Checkout = () => {
         setIsPlacing(true);
         setPlaceError(null);
 
-        try {
-            const billingId = getEffectiveBillingAddressId();
-            const payload = {
-                shippingAddressId: selectedAddressId,
-                billingAddressId: billingId,
-                paymentMethod: "cod",
-                customerNote: customerNote.trim() || undefined,
-                couponCode: appliedCoupon?.code || undefined,
+        const billingId = getEffectiveBillingAddressId();
+        const basePayload = {
+            shippingAddressId: selectedAddressId,
+            billingAddressId: billingId,
+            customerNote: customerNote.trim() || undefined,
+            couponCode: appliedCoupon?.code || undefined,
+        };
+
+        // ── COD flow ──────────────────────────────────────────────────────────
+        if (paymentMethod === "cod") {
+            try {
+                const response = await placeOrderCOD({
+                    ...basePayload,
+                    paymentMethod: "cod",
+                });
+                const result = response.data?.data;
+                logger.info("COD order placed", { orderId: result.orderId });
+                navigate(
+                    `/checkout/success?orderNumber=${encodeURIComponent(result.orderNumber)}`,
+                );
+                clearCart();
+            } catch (err) {
+                const msg =
+                    err.response?.data?.message ||
+                    "Failed to place order. Please try again.";
+                setPlaceError(msg);
+                logger.error("Place order error:", err.message);
+                setIsPlacing(false);
+            }
+            return;
+        }
+
+        // ── Razorpay flow ─────────────────────────────────────────────────────
+        if (paymentMethod === "razorpay") {
+            if (!window.Razorpay) {
+                setPlaceError(
+                    "Razorpay could not be loaded. Please refresh and try again.",
+                );
+                setIsPlacing(false);
+                return;
+            }
+
+            let orderDetails;
+            try {
+                const response = await createRazorpayOrder(basePayload);
+                orderDetails = response.data?.data;
+            } catch (err) {
+                const msg =
+                    err.response?.data?.message ||
+                    "Failed to initiate payment. Please try again.";
+                setPlaceError(msg);
+                logger.error("Razorpay create order error:", err.message);
+                setIsPlacing(false);
+                return;
+            }
+
+            const options = {
+                key: orderDetails.keyId,
+                amount: orderDetails.amount,
+                currency: orderDetails.currency,
+                name: "Sana Silver",
+                description: `Order #${orderDetails.orderNumber}`,
+                order_id: orderDetails.razorpayOrderId,
+                prefill: {
+                    name: user?.name || "",
+                    email: user?.email || "",
+                    contact: user?.phone || "",
+                },
+                theme: { color: "#1a1a1a" },
+                handler: async (rzpResponse) => {
+                    try {
+                        const verifyRes = await verifyRazorpayPayment({
+                            razorpayOrderId: rzpResponse.razorpay_order_id,
+                            razorpayPaymentId: rzpResponse.razorpay_payment_id,
+                            razorpaySignature: rzpResponse.razorpay_signature,
+                        });
+                        const result = verifyRes.data?.data;
+                        logger.info("Razorpay payment verified", {
+                            orderId: result.orderId,
+                        });
+                        clearCart();
+                        navigate(
+                            `/checkout/success?orderNumber=${encodeURIComponent(result.orderNumber)}`,
+                        );
+                    } catch (err) {
+                        const msg =
+                            err.response?.data?.message ||
+                            "Payment verification failed. Please contact support.";
+                        setPlaceError(msg);
+                        logger.error("Razorpay verify error:", err.message);
+                        setIsPlacing(false);
+                    }
+                },
+                modal: {
+                    ondismiss: () => {
+                        // Fire-and-forget — cancel the pending order and restore stock.
+                        // Don't await; the user shouldn't wait on this.
+                        cancelRazorpayOrder(orderDetails.razorpayOrderId).catch(
+                            (err) =>
+                                logger.error(
+                                    "Failed to cancel pending order on dismiss:",
+                                    err.message,
+                                ),
+                        );
+                        setPlaceError(
+                            "Payment was cancelled. You can try again.",
+                        );
+                        setIsPlacing(false);
+                    },
+                },
             };
 
-            logger.info("Placing COD order");
-            const response = await placeOrderCOD(payload);
-            const result = response.data?.data;
-
-            logger.info("Order placed successfully", {
-                orderId: result.orderId,
-                orderNumber: result.orderNumber,
+            const rzp = new window.Razorpay(options);
+            rzp.on("payment.failed", (response) => {
+                setPlaceError(
+                    response.error?.description ||
+                        "Payment failed. Please try a different method.",
+                );
+                logger.error("Razorpay payment failed:", response.error);
+                setIsPlacing(false);
             });
-
-            navigate(
-                `/checkout/success?orderNumber=${encodeURIComponent(result.orderNumber)}`,
-            );
-            clearCart();
-        } catch (err) {
-            const msg =
-                err.response?.data?.message ||
-                "Failed to place order. Please try again.";
-            setPlaceError(msg);
-            logger.error("Place order error:", err.message);
-            setIsPlacing(false);
+            rzp.open();
         }
     };
 
@@ -519,6 +620,7 @@ const Checkout = () => {
                         <PaymentMethodSelector
                             selectedMethod={paymentMethod}
                             onMethodSelect={setPaymentMethod}
+                            razorpayEnabled={razorpayEnabled}
                         />
                     </section>
 
@@ -606,13 +708,16 @@ const Checkout = () => {
                         className="w-full py-4 bg-text-primary text-white font-medium rounded-sm hover:bg-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isPlacing
-                            ? "Placing order..."
+                            ? paymentMethod === "razorpay"
+                                ? "Opening payment..."
+                                : "Placing order..."
                             : `PLACE ORDER — ${formatPrice(estimatedTotal)}`}
                     </button>
 
                     <p className="text-xs text-text-secondary text-center">
-                        By placing this order you agree to our terms of service.
-                        Payment is collected on delivery.
+                        {paymentMethod === "razorpay"
+                            ? "By placing this order you agree to our terms of service. You will be redirected to Razorpay to complete payment."
+                            : "By placing this order you agree to our terms of service. Payment is collected on delivery."}
                     </p>
                 </div>
             </div>

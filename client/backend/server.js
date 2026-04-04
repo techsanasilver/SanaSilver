@@ -21,6 +21,8 @@ import checkoutRoutes from "./features/checkout/checkout.routes.js";
 import couponRoutes from "./features/coupons/coupon.routes.js";
 import invoiceRoutes from "./features/invoices/invoice.routes.js";
 import reviewRoutes from "./features/reviews/review.routes.js";
+import razorpayRoutes from "./features/razorpay/razorpay.routes.js";
+import razorpayWebhookHandler from "./features/razorpay/razorpay.webhook.js";
 // Add more feature route imports here as you create them
 
 dotenv.config();
@@ -31,9 +33,16 @@ const PORT = process.env.PORT || 5001;
 // Security middleware
 app.use(
     cors({
-        origin: process.env.CORS_ORIGIN || "http://localhost:5174",
+        origin: process.env.CORS_ORIGIN,
         credentials: true,
     }),
+);
+
+// Razorpay webhook — must be BEFORE express.json() to receive raw body for HMAC
+app.post(
+    "/api/razorpay/webhook",
+    express.raw({ type: "application/json" }),
+    razorpayWebhookHandler,
 );
 
 // Body parsing middleware
@@ -68,6 +77,7 @@ app.use("/api/checkout", checkoutRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api", invoiceRoutes);
 app.use("/api", reviewRoutes);
+app.use("/api/razorpay", razorpayRoutes);
 // Add more feature routes here as you create them
 
 // Global error handler (must be last)
