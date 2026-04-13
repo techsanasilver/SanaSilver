@@ -98,7 +98,7 @@ const Navbar = () => {
         items: [
             { label: "About Us", link: "/about" },
             { label: "Contact", link: "/contact" },
-            { label: "FAQs", link: "/faqs" },
+            { label: "FAQs", link: "/faq" },
             { label: "Shipping & Returns", link: "/shipping" },
         ],
     };

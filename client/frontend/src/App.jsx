@@ -18,6 +18,11 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import ProductReviewsPage from "./pages/ProductReviewsPage";
+import FAQPage from "./pages/FAQPage";
+import ShippingPolicy from "./pages/ShippingPolicy";
+import ReturnsPolicy from "./pages/ReturnsPolicy";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsConditions from "./pages/TermsConditions";
 
 const App = () => {
     return (
@@ -95,6 +100,14 @@ const App = () => {
 
                 {/* Error Routes */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
+
+                {/* Policy & Info Routes */}
+                <Route path="/faq" element={<FAQPage />} />
+                <Route path="/shipping" element={<ShippingPolicy />} />
+                <Route path="/returns" element={<ReturnsPolicy />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsConditions />} />
+
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </Layout>
