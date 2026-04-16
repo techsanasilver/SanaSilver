@@ -1,11 +1,5 @@
-/**
- * Authentication Context
- * Global state management for user authentication
- * Backend uses httpOnly cookies for tokens
- */
-
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { getProfile } from "../api/auth.api";
+import { getProfile, logout as logoutApi } from "../api/auth.api";
 import logger from "../utils/logger.util";
 
 const AuthContext = createContext(null);
@@ -104,7 +98,12 @@ export const AuthProvider = ({ children }) => {
     /**
      * Logout handler
      */
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await logoutApi();
+        } catch (error) {
+            logger.warn("Logout API call failed:", error);
+        }
         try {
             // Clear state
             setUser(null);

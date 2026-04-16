@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import logger from "../utils/logger.util";
 import {
     MdFileDownload,
     MdFileUpload,
@@ -73,7 +74,7 @@ const BulkOperations = () => {
                 setPagination(response.meta.pagination);
             }
         } catch (error) {
-            console.error("Failed to fetch operations:", error);
+            logger.error("Failed to fetch operations:", error);
             setMessage({
                 type: "error",
                 text:
@@ -121,7 +122,7 @@ const BulkOperations = () => {
                 fetchOperations();
             }, 1000);
         } catch (error) {
-            console.error("Export error:", error);
+            logger.error("Export error:", error);
             setMessage({
                 type: "error",
                 text: error.response?.data?.message || "Export failed",
@@ -141,7 +142,7 @@ const BulkOperations = () => {
                 text: "Template downloaded successfully",
             });
         } catch (error) {
-            console.error("Template download error:", error);
+            logger.error("Template download error:", error);
             setMessage({
                 type: "error",
                 text: "Failed to download template",
@@ -220,7 +221,7 @@ const BulkOperations = () => {
                 });
             }
         } catch (error) {
-            console.error("Import error:", error);
+            logger.error("Import error:", error);
 
             // Handle validation errors from backend (status 400 or 422)
             if (
@@ -267,7 +268,7 @@ const BulkOperations = () => {
                     );
                 }
             } catch (error) {
-                console.error("Failed to fetch operation details:", error);
+                logger.error("Failed to fetch operation details:", error);
             }
         }
     };

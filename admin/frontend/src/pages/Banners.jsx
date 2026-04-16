@@ -29,6 +29,11 @@ const Banners = () => {
     const [filterLocation, setFilterLocation] = useState("");
     const [filterActive, setFilterActive] = useState("");
 
+    // Delete modal state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletingBannerId, setDeletingBannerId] = useState(null);
+    const [deleteHard, setDeleteHard] = useState(false);
+
     // Form state
     const [formData, setFormData] = useState({
         title: "",
@@ -292,19 +297,21 @@ const Banners = () => {
         setShowForm(true);
     };
 
-    // Handle delete
-    const handleDelete = async (bannerId, hard = false) => {
-        const confirmMessage = hard
-            ? "Are you sure you want to permanently delete this banner? This action cannot be undone."
-            : "Are you sure you want to deactivate this banner?";
+    // Handle delete (open confirm modal)
+    const handleDelete = (bannerId, hard = false) => {
+        setDeletingBannerId(bannerId);
+        setDeleteHard(hard);
+        setShowDeleteModal(true);
+    };
 
-        if (!window.confirm(confirmMessage)) return;
-
+    // Confirm delete execution
+    const confirmDelete = async () => {
+        setShowDeleteModal(false);
         setLoading(true);
         try {
-            const response = hard
-                ? await hardDeleteBanner(bannerId)
-                : await softDeleteBanner(bannerId);
+            const response = deleteHard
+                ? await hardDeleteBanner(deletingBannerId)
+                : await softDeleteBanner(deletingBannerId);
 
             setMessage({
                 type: "success",
@@ -319,6 +326,7 @@ const Banners = () => {
             });
         } finally {
             setLoading(false);
+            setDeletingBannerId(null);
         }
     };
 
@@ -918,6 +926,41 @@ const Banners = () => {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirm Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-surface rounded-lg max-w-md w-full p-6">
+                        <h3 className="text-xl font-semibold mb-2 text-danger">
+                            {deleteHard
+                                ? "Permanently Delete Banner"
+                                : "Deactivate Banner"}
+                        </h3>
+                        <p className="text-text-secondary mb-6">
+                            {deleteHard
+                                ? "Are you sure you want to permanently delete this banner? This action cannot be undone."
+                                : "Are you sure you want to deactivate this banner?"}
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={confirmDelete}
+                                className="flex-1 px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/90"
+                            >
+                                {deleteHard
+                                    ? "Delete Permanently"
+                                    : "Deactivate"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteModal(false)}
+                                className="px-4 py-2 border border-border rounded-lg text-text hover:bg-background"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

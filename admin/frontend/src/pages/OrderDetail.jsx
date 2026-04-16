@@ -51,6 +51,7 @@ const OrderDetail = () => {
     const [showShippingModal, setShowShippingModal] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showNoteModal, setShowNoteModal] = useState(false);
+    const [showDeliveredModal, setShowDeliveredModal] = useState(false);
 
     // Form states
     const [statusForm, setStatusForm] = useState({ status: "", note: "" });
@@ -163,8 +164,6 @@ const OrderDetail = () => {
 
     // Handle mark as delivered
     const handleMarkDelivered = async () => {
-        if (!confirm("Are you sure you want to mark this order as delivered?"))
-            return;
         try {
             setActionLoading(true);
             const response = await markAsDelivered(orderId);
@@ -467,7 +466,7 @@ const OrderDetail = () => {
                     )}
                 {order.orderStatus === "shipped" && (
                     <button
-                        onClick={handleMarkDelivered}
+                        onClick={() => setShowDeliveredModal(true)}
                         disabled={actionLoading}
                         className="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-colors disabled:opacity-50"
                     >
@@ -1086,6 +1085,42 @@ const OrderDetail = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Mark Delivered Confirm Modal */}
+            {showDeliveredModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg max-w-md w-full p-6">
+                        <h3 className="text-xl font-semibold mb-2">
+                            Mark as Delivered
+                        </h3>
+                        <p className="text-gray-600 mb-6">
+                            Are you sure you want to mark this order as
+                            delivered? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={async () => {
+                                    setShowDeliveredModal(false);
+                                    await handleMarkDelivered();
+                                }}
+                                disabled={actionLoading}
+                                className="flex-1 px-4 py-2 bg-success text-white rounded-lg hover:bg-success/90 disabled:opacity-50"
+                            >
+                                {actionLoading
+                                    ? "Updating..."
+                                    : "Yes, Mark Delivered"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowDeliveredModal(false)}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

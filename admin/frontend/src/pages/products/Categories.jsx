@@ -41,6 +41,11 @@ const Categories = () => {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [imageError, setImageError] = useState(null);
+
+    // Delete modal state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletingCategory, setDeletingCategory] = useState(null); // { id, name }
 
     // Fetch categories
     const fetchCategories = async () => {
@@ -78,9 +83,11 @@ const Categories = () => {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) {
-                alert("Image size should be less than 5MB");
+                setImageError("Image size should be less than 5MB");
+                e.target.value = "";
                 return;
             }
+            setImageError(null);
             setImageFile(file);
             setImagePreview(URL.createObjectURL(file));
         }
@@ -197,22 +204,24 @@ const Categories = () => {
     };
 
     // Delete category
-    const handleDelete = async (categoryId, categoryName) => {
-        if (
-            !window.confirm(
-                `Are you sure you want to delete "${categoryName}"?`,
-            )
-        ) {
-            return;
-        }
+    const handleDelete = (categoryId, categoryName) => {
+        setDeletingCategory({ id: categoryId, name: categoryName });
+        setShowDeleteModal(true);
+    };
 
+    // Confirm delete execution
+    const confirmDelete = async () => {
+        if (!deletingCategory) return;
+        setShowDeleteModal(false);
         try {
-            await softDeleteCategory(categoryId);
+            await softDeleteCategory(deletingCategory.id);
             logger.info("Category deleted successfully");
             await fetchCategories();
         } catch (error) {
             handleApiError(error);
             logger.error("Failed to delete category:", error);
+        } finally {
+            setDeletingCategory(null);
         }
     };
 
@@ -320,6 +329,11 @@ const Categories = () => {
                                 onChange={handleImageChange}
                                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
                             />
+                            {imageError && (
+                                <p className="mt-1 text-sm text-danger">
+                                    {imageError}
+                                </p>
+                            )}
                             {imagePreview && (
                                 <img
                                     src={imagePreview}
@@ -750,6 +764,37 @@ const Categories = () => {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirm Modal */}
+            {showDeleteModal && deletingCategory && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-surface rounded-lg max-w-md w-full p-6">
+                        <h3 className="text-xl font-semibold mb-2 text-danger">
+                            Delete Category
+                        </h3>
+                        <p className="text-text-secondary mb-6">
+                            Are you sure you want to delete &ldquo;
+                            {deletingCategory.name}&rdquo;? This action cannot
+                            be undone.
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={confirmDelete}
+                                className="flex-1 px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/90"
+                            >
+                                Delete
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteModal(false)}
+                                className="px-4 py-2 border border-border rounded-lg text-text hover:bg-background"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
