@@ -273,7 +273,7 @@ const ProductDetail = () => {
                                     "/placeholder.png"
                                 }
                                 alt={product.name}
-                                className="w-full h-full object-contain"
+                                className="w-full h-full object-cover"
                             />
                         </div>
 

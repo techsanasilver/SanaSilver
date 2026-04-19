@@ -137,6 +137,7 @@ const updateOrderStatus = async (req, res) => {
 
         if (
             error.message.includes("Cannot transition") ||
+            error.message.includes("already in") ||
             error.message === "Order not found"
         ) {
             return apiResponse.badRequest(res, error.message);

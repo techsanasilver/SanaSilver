@@ -252,22 +252,9 @@ const updateOrderStatus = async (orderId, newStatus, adminId, note = "") => {
             throw new Error("Order not found");
         }
 
-        // Validate status transition
-        const validTransitions = {
-            pending: ["confirmed", "cancelled"],
-            confirmed: ["processing", "cancelled"],
-            processing: ["shipped", "cancelled"],
-            shipped: ["delivered"],
-            delivered: [], // Terminal state
-            cancelled: [], // Terminal state
-        };
-
-        const allowedStatuses = validTransitions[order.orderStatus] || [];
-
-        if (!allowedStatuses.includes(newStatus)) {
-            throw new Error(
-                `Cannot transition from ${order.orderStatus} to ${newStatus}`,
-            );
+        // Validate status transition — allow any change except same-to-same
+        if (order.orderStatus === newStatus) {
+            throw new Error(`Order is already in ${newStatus} status`);
         }
 
         // Update status

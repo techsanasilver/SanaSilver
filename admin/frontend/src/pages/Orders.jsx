@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
     MdSearch,
     MdFilterList,
-    MdVisibility,
     MdClear,
     MdRefresh,
     MdFileDownload,
@@ -268,20 +267,6 @@ const Orders = () => {
 
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Period Selector */}
-                <div className="col-span-full flex justify-end mb-2">
-                    <select
-                        value={statsPeriod}
-                        onChange={(e) => setStatsPeriod(e.target.value)}
-                        className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
-                    >
-                        <option value="today">Today</option>
-                        <option value="week">This Week</option>
-                        <option value="month">This Month</option>
-                        <option value="all">All Time</option>
-                    </select>
-                </div>
-
                 {statsLoading ? (
                     <div className="col-span-full flex justify-center py-8">
                         <Loader size="md" />
@@ -542,16 +527,16 @@ const Orders = () => {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Date
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
-                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {orders.map((order) => (
                                         <tr
                                             key={order._id}
-                                            className="hover:bg-gray-50 transition-colors"
+                                            onClick={() =>
+                                                navigate(`/orders/${order._id}`)
+                                            }
+                                            className="hover:bg-gray-50 transition-colors cursor-pointer"
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="text-sm font-medium text-gray-900">
@@ -609,19 +594,6 @@ const Orders = () => {
                                             <td className="px-6 py-4 text-sm text-gray-500">
                                                 {formatDate(order.createdAt)}
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() =>
-                                                        navigate(
-                                                            `/orders/${order._id}`,
-                                                        )
-                                                    }
-                                                    className="inline-flex items-center gap-1 px-3 py-1 text-sm text-info hover:bg-info/10 rounded-lg transition-colors"
-                                                >
-                                                    <MdVisibility />
-                                                    View
-                                                </button>
-                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -630,15 +602,13 @@ const Orders = () => {
 
                         {/* Pagination */}
                         {pagination.totalPages > 1 && (
-                            <div className="px-6 py-4 border-t border-gray-200">
-                                <Pagination
-                                    currentPage={pagination.currentPage}
-                                    totalPages={pagination.totalPages}
-                                    onPageChange={handlePageChange}
-                                    hasNextPage={pagination.hasNextPage}
-                                    hasPrevPage={pagination.hasPrevPage}
-                                />
-                            </div>
+                            <Pagination
+                                currentPage={pagination.currentPage}
+                                totalPages={pagination.totalPages}
+                                onPageChange={handlePageChange}
+                                hasNextPage={pagination.hasNextPage}
+                                hasPrevPage={pagination.hasPrevPage}
+                            />
                         )}
                     </>
                 )}

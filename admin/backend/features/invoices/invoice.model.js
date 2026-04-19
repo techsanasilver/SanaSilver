@@ -181,9 +181,7 @@ const invoiceSchema = new mongoose.Schema(
 );
 
 // ── Indexes ──────────────────────────────────────────────────────────────────
-invoiceSchema.index({ order: 1 });
 invoiceSchema.index({ customer: 1 });
-invoiceSchema.index({ invoiceNumber: 1 });
 invoiceSchema.index({ createdAt: -1 });
 
 // ============================================================================
