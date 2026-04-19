@@ -280,7 +280,7 @@ export const buildProductFilterPipeline = (filters = {}) => {
     }
 
     if (filters.search) {
-        productMatch.$text = { $search: filters.search };
+        productMatch.name = { $regex: filters.search, $options: "i" };
     }
 
     pipeline.push({ $match: productMatch });

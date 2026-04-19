@@ -11,8 +11,17 @@ import {
     MdExpandMore,
     MdExpandLess,
     MdImage,
+    MdThumbUp,
+    MdThumbDown,
+    MdDeleteOutline,
 } from "react-icons/md";
 import { getProductById } from "../../api/products.api";
+import {
+    listReviews,
+    approveReview,
+    rejectReview,
+    deleteReview,
+} from "../../api/reviews.api";
 import { handleApiError } from "../../utils/axios";
 import logger from "../../utils/logger.util";
 import Loader from "../../components/common/Loader";
@@ -26,6 +35,11 @@ const ProductDetail = () => {
     const [error, setError] = useState(null);
     const [selectedImage, setSelectedImage] = useState(0);
     const [expandedVariants, setExpandedVariants] = useState({});
+
+    // Reviews state
+    const [reviews, setReviews] = useState([]);
+    const [reviewsLoading, setReviewsLoading] = useState(false);
+    const [reviewMessage, setReviewMessage] = useState(null);
 
     // Fetch product details
     useEffect(() => {
@@ -56,6 +70,87 @@ const ProductDetail = () => {
 
         fetchProduct();
     }, [id]);
+
+    // Fetch reviews for this product
+    useEffect(() => {
+        const fetchReviews = async () => {
+            setReviewsLoading(true);
+            try {
+                const res = await listReviews({ productId: id, limit: 50 });
+                if (res.success) {
+                    setReviews(res.data || []);
+                }
+            } catch (err) {
+                logger.error("Error fetching reviews:", err);
+            } finally {
+                setReviewsLoading(false);
+            }
+        };
+        fetchReviews();
+    }, [id]);
+
+    // Approve a review
+    const handleApproveReview = async (reviewId) => {
+        try {
+            const res = await approveReview(reviewId);
+            if (res.success) {
+                setReviews((prev) =>
+                    prev.map((r) =>
+                        r._id === reviewId ? { ...r, status: "approved" } : r,
+                    ),
+                );
+                setReviewMessage({ type: "success", text: "Review approved." });
+            }
+        } catch (err) {
+            logger.error("Error approving review:", err);
+            setReviewMessage({
+                type: "error",
+                text: "Failed to approve review.",
+            });
+        }
+        setTimeout(() => setReviewMessage(null), 3000);
+    };
+
+    // Reject a review
+    const handleRejectReview = async (reviewId) => {
+        try {
+            const res = await rejectReview(reviewId);
+            if (res.success) {
+                setReviews((prev) =>
+                    prev.map((r) =>
+                        r._id === reviewId ? { ...r, status: "rejected" } : r,
+                    ),
+                );
+                setReviewMessage({ type: "success", text: "Review rejected." });
+            }
+        } catch (err) {
+            logger.error("Error rejecting review:", err);
+            setReviewMessage({
+                type: "error",
+                text: "Failed to reject review.",
+            });
+        }
+        setTimeout(() => setReviewMessage(null), 3000);
+    };
+
+    // Delete a review
+    const handleDeleteReview = async (reviewId) => {
+        if (!window.confirm("Delete this review permanently?")) return;
+        try {
+            const res = await deleteReview(reviewId);
+            if (res.success) {
+                setReviews((prev) => prev.filter((r) => r._id !== reviewId));
+                setReviewMessage({ type: "success", text: "Review deleted." });
+            }
+        } catch (err) {
+            logger.error("Error deleting review:", err);
+            setReviewMessage({
+                type: "error",
+                text: "Failed to delete review.",
+            });
+        }
+        setTimeout(() => setReviewMessage(null), 3000);
+    };
 
     // Format price
     const formatPrice = (price) => {
@@ -1094,6 +1189,136 @@ const ProductDetail = () => {
                     <p className="text-center text-text-secondary py-8">
                         No variants available
                     </p>
+                )}
+            </div>
+
+            {/* Customer Reviews */}
+            <div className="bg-surface rounded-lg shadow-md p-6 space-y-4">
+                <h2 className="text-xl font-semibold text-text border-b border-border pb-2">
+                    Customer Reviews ({reviews.length})
+                </h2>
+
+                {reviewMessage && (
+                    <div
+                        className={`px-4 py-3 rounded-lg text-sm ${
+                            reviewMessage.type === "success"
+                                ? "bg-success/10 border border-success text-success"
+                                : "bg-danger/10 border border-danger text-danger"
+                        }`}
+                    >
+                        {reviewMessage.text}
+                    </div>
+                )}
+
+                {reviewsLoading ? (
+                    <div className="flex justify-center py-8">
+                        <Loader />
+                    </div>
+                ) : reviews.length === 0 ? (
+                    <p className="text-center text-text-secondary py-8">
+                        No reviews yet for this product.
+                    </p>
+                ) : (
+                    <div className="space-y-4">
+                        {reviews.map((review) => (
+                            <div
+                                key={review._id}
+                                className="border border-border rounded-lg p-4 space-y-2"
+                            >
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 space-y-1">
+                                        {/* Reviewer + date */}
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-medium text-text">
+                                                {review.customerName ||
+                                                    "Anonymous"}
+                                            </span>
+                                            <span className="text-xs text-text-secondary">
+                                                {formatDate(review.createdAt)}
+                                            </span>
+                                            {/* Status badge */}
+                                            <span
+                                                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                                    review.status === "approved"
+                                                        ? "bg-success/10 text-success"
+                                                        : review.status ===
+                                                            "rejected"
+                                                          ? "bg-danger/10 text-danger"
+                                                          : "bg-accent/10 text-accent"
+                                                }`}
+                                            >
+                                                {review.status || "pending"}
+                                            </span>
+                                        </div>
+
+                                        {/* Stars */}
+                                        <div className="flex items-center gap-1">
+                                            {renderStars(review.rating)}
+                                            <span className="text-sm text-text-secondary ml-1">
+                                                ({review.rating}/5)
+                                            </span>
+                                        </div>
+
+                                        {/* Review text */}
+                                        {review.comment && (
+                                            <p className="text-text text-sm">
+                                                {review.comment}
+                                            </p>
+                                        )}
+
+                                        {/* Admin note */}
+                                        {review.adminNote && (
+                                            <p className="text-xs text-text-secondary italic">
+                                                Admin note: {review.adminNote}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {review.status !== "approved" && (
+                                            <button
+                                                onClick={() =>
+                                                    handleApproveReview(
+                                                        review._id,
+                                                    )
+                                                }
+                                                title="Approve"
+                                                className="flex items-center gap-1 text-xs bg-success/10 text-success border border-success/30 px-2 py-1 rounded hover:bg-success/20 transition-colors"
+                                            >
+                                                <MdThumbUp size={14} />
+                                                Approve
+                                            </button>
+                                        )}
+                                        {review.status !== "rejected" && (
+                                            <button
+                                                onClick={() =>
+                                                    handleRejectReview(
+                                                        review._id,
+                                                    )
+                                                }
+                                                title="Reject"
+                                                className="flex items-center gap-1 text-xs bg-danger/10 text-danger border border-danger/30 px-2 py-1 rounded hover:bg-danger/20 transition-colors"
+                                            >
+                                                <MdThumbDown size={14} />
+                                                Reject
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() =>
+                                                handleDeleteReview(review._id)
+                                            }
+                                            title="Delete"
+                                            className="flex items-center gap-1 text-xs bg-background text-text-secondary border border-border px-2 py-1 rounded hover:bg-danger/10 hover:text-danger transition-colors"
+                                        >
+                                            <MdDeleteOutline size={14} />
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 )}
             </div>
         </div>

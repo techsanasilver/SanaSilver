@@ -7,7 +7,7 @@ import {
     uploadVariantImages,
     deleteVariantImages,
 } from "../../api/products.api";
-import { getAllCategories } from "../../api/categories.api";
+import { getCategoryTree } from "../../api/categories.api";
 import { handleApiError } from "../../utils/axios";
 import logger from "../../utils/logger.util";
 import Loader from "../../components/common/Loader";
@@ -37,6 +37,7 @@ const EditProduct = () => {
         makingChargesPerGram: "",
         gstRate: "3",
         isFeatured: false,
+        isActive: true,
         tags: [],
         gender: "",
         occasion: "",
@@ -74,7 +75,7 @@ const EditProduct = () => {
         const fetchCategories = async () => {
             try {
                 setLoadingCategories(true);
-                const response = await getAllCategories();
+                const response = await getCategoryTree();
                 if (response.success) {
                     setCategories(response.data);
                     logger.debug("Categories loaded:", response.data);
@@ -96,8 +97,8 @@ const EditProduct = () => {
             const selectedCategory = categories.find(
                 (cat) => cat._id === formData.category,
             );
-            if (selectedCategory && selectedCategory.subcategories) {
-                setSubcategories(selectedCategory.subcategories);
+            if (selectedCategory && selectedCategory.children) {
+                setSubcategories(selectedCategory.children);
             } else {
                 setSubcategories([]);
             }
@@ -129,9 +130,13 @@ const EditProduct = () => {
                         subcategory: product.subcategory?._id || "",
                         purity: product.purity || "925",
                         makingChargesPerGram:
-                            product.makingChargesPerGram || "",
+                            product.makingChargesPerGram ?? "",
                         gstRate: product.gstRate || "3",
                         isFeatured: product.isFeatured || false,
+                        isActive:
+                            product.isActive !== undefined
+                                ? product.isActive
+                                : true,
                         tags: product.tags || [],
                         gender: product.attributes?.gender || "",
                         occasion: product.attributes?.occasion || "",
@@ -490,6 +495,7 @@ const EditProduct = () => {
             data.append("makingChargesPerGram", formData.makingChargesPerGram);
             data.append("gstRate", formData.gstRate);
             data.append("isFeatured", formData.isFeatured);
+            data.append("isActive", formData.isActive);
 
             // Add tags as JSON string
             if (formData.tags.length > 0) {
@@ -898,6 +904,22 @@ const EditProduct = () => {
                                 />
                                 <span className="text-sm font-medium text-text">
                                     Mark as Featured Product
+                                </span>
+                            </label>
+                        </div>
+
+                        {/* Active */}
+                        <div className="md:col-span-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="isActive"
+                                    checked={formData.isActive}
+                                    onChange={handleInputChange}
+                                    className="w-4 h-4 text-primary border-border rounded focus:ring-2 focus:ring-primary"
+                                />
+                                <span className="text-sm font-medium text-text">
+                                    Active (visible to customers)
                                 </span>
                             </label>
                         </div>

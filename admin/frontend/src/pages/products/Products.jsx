@@ -10,6 +10,7 @@ import {
     MdClear,
 } from "react-icons/md";
 import { getAllProducts } from "../../api/products.api";
+import { getCategoryTree } from "../../api/categories.api";
 import { handleApiError } from "../../utils/axios";
 import logger from "../../utils/logger.util";
 import Loader from "../../components/common/Loader";
@@ -34,6 +35,8 @@ const Products = () => {
     // Separate draft filters (user input) from applied filters (API calls)
     const [draftFilters, setDraftFilters] = useState({
         search: "",
+        category: "",
+        subcategory: "",
         purity: "",
         isFeatured: "",
         isActive: "",
@@ -46,6 +49,8 @@ const Products = () => {
     // Applied filters - these trigger API calls
     const [appliedFilters, setAppliedFilters] = useState({
         search: "",
+        category: "",
+        subcategory: "",
         purity: "",
         isFeatured: "",
         isActive: "",
@@ -59,6 +64,10 @@ const Products = () => {
     });
 
     const [showFilters, setShowFilters] = useState(false);
+
+    // Category/subcategory state for filters
+    const [rootCategories, setRootCategories] = useState([]);
+    const [filterSubcategories, setFilterSubcategories] = useState([]);
 
     // Fetch products
     const fetchProducts = async () => {
@@ -112,9 +121,34 @@ const Products = () => {
         fetchProducts();
     }, [appliedFilters]);
 
+    // Load category tree on mount
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const response = await getCategoryTree();
+                if (response.success) {
+                    setRootCategories(response.data || []);
+                }
+            } catch (err) {
+                logger.error("Error loading categories:", err);
+            }
+        };
+        loadCategories();
+    }, []);
+
     // Handle draft filter change (doesn't trigger API call)
     const handleDraftFilterChange = (key, value) => {
-        setDraftFilters((prev) => ({ ...prev, [key]: value }));
+        if (key === "category") {
+            const cat = rootCategories.find((c) => c._id === value);
+            setFilterSubcategories(cat?.children || []);
+            setDraftFilters((prev) => ({
+                ...prev,
+                category: value,
+                subcategory: "",
+            }));
+        } else {
+            setDraftFilters((prev) => ({ ...prev, [key]: value }));
+        }
     };
 
     // Handle sort change (applies immediately)
@@ -145,8 +179,11 @@ const Products = () => {
 
     // Clear all filters
     const clearFilters = () => {
+        setFilterSubcategories([]);
         const clearedFilters = {
             search: "",
+            category: "",
+            subcategory: "",
             purity: "",
             isFeatured: "",
             isActive: "",
@@ -213,7 +250,7 @@ const Products = () => {
                             />
                             <input
                                 type="text"
-                                placeholder="Search products by name, description..."
+                                placeholder="Search by product name..."
                                 value={draftFilters.search}
                                 onChange={(e) =>
                                     handleDraftFilterChange(
@@ -252,6 +289,55 @@ const Products = () => {
                 {/* Filters Panel */}
                 {showFilters && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-border">
+                        {/* Category */}
+                        <div>
+                            <label className="block text-sm font-medium text-text mb-1">
+                                Category
+                            </label>
+                            <select
+                                value={draftFilters.category}
+                                onChange={(e) =>
+                                    handleDraftFilterChange(
+                                        "category",
+                                        e.target.value,
+                                    )
+                                }
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                <option value="">All Categories</option>
+                                {rootCategories.map((cat) => (
+                                    <option key={cat._id} value={cat._id}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Subcategory */}
+                        <div>
+                            <label className="block text-sm font-medium text-text mb-1">
+                                Subcategory
+                            </label>
+                            <select
+                                value={draftFilters.subcategory}
+                                onChange={(e) =>
+                                    handleDraftFilterChange(
+                                        "subcategory",
+                                        e.target.value,
+                                    )
+                                }
+                                disabled={filterSubcategories.length === 0}
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                            >
+                                <option value="">All Subcategories</option>
+                                {filterSubcategories.map((sub) => (
+                                    <option key={sub._id} value={sub._id}>
+                                        {sub.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
                         {/* Purity */}
                         <div>
                             <label className="block text-sm font-medium text-text mb-1">
