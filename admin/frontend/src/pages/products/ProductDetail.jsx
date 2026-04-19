@@ -1260,9 +1260,9 @@ const ProductDetail = () => {
                                         </div>
 
                                         {/* Review text */}
-                                        {review.comment && (
+                                        {review.body && (
                                             <p className="text-text text-sm">
-                                                {review.comment}
+                                                {review.body}
                                             </p>
                                         )}
 
