@@ -17,6 +17,8 @@ import OrderDetail from "./pages/OrderDetail";
 import Unauthorized from "./pages/Unauthorized";
 import Coupons from "./pages/Coupons";
 import Reviews from "./pages/Reviews";
+import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 
 const App = () => {
     return (
@@ -54,7 +56,11 @@ const App = () => {
                 <Route path="/orders/:orderId" element={<OrderDetail />} />
 
                 {/* Other Routes */}
-                <Route path="/customers" element={<div>Customers Page</div>} />
+                <Route path="/customers" element={<Customers />} />
+                <Route
+                    path="/customers/:customerId"
+                    element={<CustomerDetail />}
+                />
                 <Route path="/banners" element={<Banners />} />
                 <Route path="/coupons" element={<Coupons />} />
                 <Route path="/reviews" element={<Reviews />} />

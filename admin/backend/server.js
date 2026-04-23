@@ -18,6 +18,7 @@ import couponRoutes from "./features/coupons/coupon.routes.js";
 import orderRoutes from "./features/orders/order.routes.js";
 import invoiceRoutes from "./features/invoices/invoice.routes.js";
 import reviewRoutes from "./features/reviews/review.routes.js";
+import userRoutes from "./features/users/user.routes.js";
 // Add more feature route imports here as you create them
 
 dotenv.config();
@@ -57,6 +58,7 @@ app.use("/api/coupons", couponRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api", invoiceRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/users", userRoutes);
 // Add more feature routes here as you create them
 
 // Global error handler (must be last)
