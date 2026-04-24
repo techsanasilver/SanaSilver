@@ -185,28 +185,63 @@ const MultiSelectList = ({
 // ============================================================================
 
 const CouponStatsPanel = ({ couponId, onClose }) => {
-    const [stats, setStats] = useState(null);
+    const [statsData, setStatsData] = useState(null);
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const load = async () => {
             try {
                 setLoading(true);
+                setError(null);
                 const [statsRes, histRes] = await Promise.all([
                     getCouponStats(couponId),
                     getCouponUsageHistory(couponId),
                 ]);
-                setStats(statsRes.data);
+                // statsRes.data = { coupon: {...}, stats: { totalOrders, totalRevenue, totalDiscount } }
+                setStatsData(statsRes.data);
+                // histRes.data = array of Order documents
                 setHistory(histRes.data || []);
             } catch (err) {
                 logger.error("Failed to load coupon stats:", err);
+                setError("Failed to load analytics");
             } finally {
                 setLoading(false);
             }
         };
         load();
     }, [couponId]);
+
+    const couponInfo = statsData?.coupon;
+    const orderStats = statsData?.stats;
+    const avgDiscount =
+        orderStats?.totalOrders > 0
+            ? Math.round(orderStats.totalDiscount / orderStats.totalOrders)
+            : null;
+
+    const statCards = statsData
+        ? [
+              {
+                  label: "Total Uses",
+                  value: couponInfo?.usageCount ?? orderStats?.totalOrders ?? 0,
+              },
+              {
+                  label: "Unique Users",
+                  value: couponInfo?.uniqueUsers ?? 0,
+              },
+              {
+                  label: "Total Discount",
+                  value: `₹${(orderStats?.totalDiscount ?? 0).toLocaleString("en-IN")}`,
+              },
+              {
+                  label: "Avg Discount",
+                  value: avgDiscount
+                      ? `₹${avgDiscount.toLocaleString("en-IN")}`
+                      : "—",
+              },
+          ]
+        : [];
 
     return (
         <div className="bg-surface border border-border rounded-lg p-4 mt-2">
@@ -227,29 +262,12 @@ const CouponStatsPanel = ({ couponId, onClose }) => {
                 <div className="flex justify-center py-4">
                     <Loader size="sm" />
                 </div>
-            ) : stats ? (
+            ) : error ? (
+                <p className="text-sm text-danger text-center py-3">{error}</p>
+            ) : statsData ? (
                 <>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                        {[
-                            {
-                                label: "Total Uses",
-                                value: stats.totalUsage ?? 0,
-                            },
-                            {
-                                label: "Unique Users",
-                                value: stats.uniqueUsers ?? 0,
-                            },
-                            {
-                                label: "Total Discount",
-                                value: `₹${(stats.totalDiscount ?? 0).toLocaleString("en-IN")}`,
-                            },
-                            {
-                                label: "Avg Discount",
-                                value: stats.averageDiscount
-                                    ? `₹${Math.round(stats.averageDiscount).toLocaleString("en-IN")}`
-                                    : "—",
-                            },
-                        ].map((s) => (
+                        {statCards.map((s) => (
                             <div
                                 key={s.label}
                                 className="bg-background rounded-md p-3 text-center"
@@ -264,17 +282,17 @@ const CouponStatsPanel = ({ couponId, onClose }) => {
                         ))}
                     </div>
 
-                    {history.length > 0 && (
+                    {history.length > 0 ? (
                         <>
                             <h5 className="text-sm font-medium text-text mb-2">
-                                Recent Uses
+                                Recent Orders
                             </h5>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
                                     <thead>
                                         <tr className="bg-background text-text-secondary">
                                             <th className="text-left py-1.5 px-2">
-                                                User
+                                                Customer
                                             </th>
                                             <th className="text-left py-1.5 px-2">
                                                 Order
@@ -288,34 +306,48 @@ const CouponStatsPanel = ({ couponId, onClose }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {history.slice(0, 10).map((u, i) => (
-                                            <tr
-                                                key={i}
-                                                className="border-t border-border"
-                                            >
-                                                <td className="py-1.5 px-2">
-                                                    {u.user
-                                                        ? `${u.user.firstName || ""} ${u.user.lastName || ""}`.trim() ||
-                                                          u.user.phone ||
-                                                          "—"
-                                                        : "—"}
-                                                </td>
-                                                <td className="py-1.5 px-2">
-                                                    {u.order?.orderNumber ||
-                                                        "—"}
-                                                </td>
-                                                <td className="py-1.5 px-2 text-right">
-                                                    ₹{u.discountApplied ?? 0}
-                                                </td>
-                                                <td className="py-1.5 px-2 text-right text-text-secondary">
-                                                    {formatDate(u.usedAt)}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {history
+                                            .slice(0, 10)
+                                            .map((order, i) => (
+                                                <tr
+                                                    key={order._id || i}
+                                                    className="border-t border-border"
+                                                >
+                                                    <td className="py-1.5 px-2">
+                                                        {order.customer
+                                                            ? `${order.customer.firstName || ""} ${order.customer.lastName || ""}`.trim() ||
+                                                              order.customer
+                                                                  .phone ||
+                                                              order.customer
+                                                                  .email ||
+                                                              "—"
+                                                            : "—"}
+                                                    </td>
+                                                    <td className="py-1.5 px-2 font-mono">
+                                                        {order.orderNumber ||
+                                                            "—"}
+                                                    </td>
+                                                    <td className="py-1.5 px-2 text-right">
+                                                        ₹
+                                                        {order.appliedCoupon
+                                                            ?.discountAmount ??
+                                                            0}
+                                                    </td>
+                                                    <td className="py-1.5 px-2 text-right text-text-secondary">
+                                                        {formatDate(
+                                                            order.createdAt,
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
                                     </tbody>
                                 </table>
                             </div>
                         </>
+                    ) : (
+                        <p className="text-xs text-text-secondary text-center py-2">
+                            No orders have used this coupon yet
+                        </p>
                     )}
                 </>
             ) : (
