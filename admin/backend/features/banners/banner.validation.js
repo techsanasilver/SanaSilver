@@ -28,28 +28,9 @@ const validateBannerCreate = (data) => {
         errors.title = "Title cannot exceed 100 characters";
     }
 
-    // Subtitle validation (optional)
-    if (data.subtitle && data.subtitle.length > 200) {
-        errors.subtitle = "Subtitle cannot exceed 200 characters";
-    }
-
-    // Link validation
-    if (data.link) {
-        if (
-            data.link.type &&
-            !validateEnum(data.link.type, ["internal", "external"])
-        ) {
-            errors["link.type"] =
-                "Link type must be either 'internal' or 'external'";
-        }
-        if (data.link.url && typeof data.link.url !== "string") {
-            errors["link.url"] = "Link URL must be a string";
-        }
-    }
-
-    // Button text validation (optional)
-    if (data.buttonText && data.buttonText.length > 50) {
-        errors.buttonText = "Button text cannot exceed 50 characters";
+    // Link URL validation (optional)
+    if (data.link?.url && typeof data.link.url !== "string") {
+        errors["link.url"] = "Link URL must be a string";
     }
 
     // Display location validation
@@ -110,28 +91,9 @@ const validateBannerUpdate = (data) => {
         }
     }
 
-    // Subtitle validation (optional)
-    if (data.subtitle && data.subtitle.length > 200) {
-        errors.subtitle = "Subtitle cannot exceed 200 characters";
-    }
-
-    // Link validation
-    if (data.link) {
-        if (
-            data.link.type &&
-            !validateEnum(data.link.type, ["internal", "external"])
-        ) {
-            errors["link.type"] =
-                "Link type must be either 'internal' or 'external'";
-        }
-        if (data.link.url && typeof data.link.url !== "string") {
-            errors["link.url"] = "Link URL must be a string";
-        }
-    }
-
-    // Button text validation (optional)
-    if (data.buttonText && data.buttonText.length > 50) {
-        errors.buttonText = "Button text cannot exceed 50 characters";
+    // Link URL validation (optional)
+    if (data.link?.url && typeof data.link.url !== "string") {
+        errors["link.url"] = "Link URL must be a string";
     }
 
     // Display location validation

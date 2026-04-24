@@ -22,7 +22,7 @@ const imageSchema = new mongoose.Schema(
             original: String,
         },
     },
-    { _id: false }
+    { _id: false },
 );
 
 const bannerSchema = new mongoose.Schema(
@@ -33,26 +33,11 @@ const bannerSchema = new mongoose.Schema(
             trim: true,
             maxlength: [100, "Title cannot exceed 100 characters"],
         },
-        subtitle: {
-            type: String,
-            trim: true,
-            maxlength: [200, "Subtitle cannot exceed 200 characters"],
-        },
         link: {
-            type: {
-                type: String,
-                enum: ["internal", "external"],
-                default: "internal",
-            },
             url: {
                 type: String,
                 trim: true,
             },
-        },
-        buttonText: {
-            type: String,
-            trim: true,
-            maxlength: [50, "Button text cannot exceed 50 characters"],
         },
         displayLocation: {
             type: String,
@@ -83,7 +68,7 @@ const bannerSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    }
+    },
 );
 
 // Index for sorting and filtering

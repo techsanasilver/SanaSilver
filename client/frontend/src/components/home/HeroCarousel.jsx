@@ -95,27 +95,26 @@ const HeroCarousel = () => {
         return banner.desktopImage?.alt || banner.title;
     };
 
-    // Render link wrapper (internal or external)
-    const BannerLink = ({ banner, children }) => {
+    // Wrap image in link if banner has a URL
+    const BannerWrapper = ({ banner, children }) => {
         if (!banner.link?.url) {
-            return <div className="relative w-full h-full">{children}</div>;
+            return <div className="relative w-full">{children}</div>;
         }
-
-        if (banner.link.type === "external") {
+        const isExternal = banner.link.url.startsWith("http");
+        if (isExternal) {
             return (
                 <a
                     href={banner.link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-full h-full block"
+                    className="relative w-full block"
                 >
                     {children}
                 </a>
             );
         }
-
         return (
-            <Link to={banner.link.url} className="relative w-full h-full block">
+            <Link to={banner.link.url} className="relative w-full block">
                 {children}
             </Link>
         );
@@ -151,47 +150,14 @@ const HeroCarousel = () => {
                                     : "opacity-0 absolute inset-0 pointer-events-none"
                             }`}
                         >
-                            <BannerLink banner={banner}>
-                                <div className="relative w-full">
-                                    {/* Banner Image */}
-                                    <img
-                                        src={getBannerImage(banner)}
-                                        alt={getBannerAlt(banner)}
-                                        className="w-full h-auto block"
-                                        loading={index === 0 ? "eager" : "lazy"}
-                                    />
-
-                                    {/* Banner Content Overlay */}
-                                    {(banner.title ||
-                                        banner.subtitle ||
-                                        banner.buttonText) && (
-                                        <div className="absolute inset-0 bg-linear-to-r from-black/50 to-transparent flex items-center">
-                                            <div className="px-4 md:px-8 lg:px-16">
-                                                <div className="max-w-2xl text-white">
-                                                    {banner.title && (
-                                                        <h1 className="text-xl md:text-5xl lg:text-6xl font-bold mb-2 md:mb-4 tracking-wide">
-                                                            {banner.title}
-                                                        </h1>
-                                                    )}
-                                                    {banner.subtitle && (
-                                                        <p className="text-sm md:text-xl lg:text-2xl mb-3 md:mb-6 font-light">
-                                                            {banner.subtitle}
-                                                        </p>
-                                                    )}
-                                                    {banner.buttonText &&
-                                                        banner.link?.url && (
-                                                            <button className="px-6 py-2 md:px-8 md:py-3 text-sm md:text-base bg-accent-1 text-text-primary-invert font-medium rounded-md hover:bg-accent-1/90 transition-colors shadow-lg">
-                                                                {
-                                                                    banner.buttonText
-                                                                }
-                                                            </button>
-                                                        )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </BannerLink>
+                            <BannerWrapper banner={banner}>
+                                <img
+                                    src={getBannerImage(banner)}
+                                    alt={getBannerAlt(banner)}
+                                    className="w-full h-auto block"
+                                    loading={index === 0 ? "eager" : "lazy"}
+                                />
+                            </BannerWrapper>
                         </div>
                     ))}
                 </div>

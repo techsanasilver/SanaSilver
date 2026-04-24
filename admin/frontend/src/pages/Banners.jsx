@@ -37,10 +37,7 @@ const Banners = () => {
     // Form state
     const [formData, setFormData] = useState({
         title: "",
-        subtitle: "",
-        linkType: "internal",
         linkUrl: "",
-        buttonText: "",
         displayLocation: "home",
         sortOrder: 0,
         isActive: true,
@@ -82,10 +79,7 @@ const Banners = () => {
     const resetForm = () => {
         setFormData({
             title: "",
-            subtitle: "",
-            linkType: "internal",
             linkUrl: "",
-            buttonText: "",
             displayLocation: "home",
             sortOrder: 0,
             isActive: true,
@@ -172,14 +166,6 @@ const Banners = () => {
             errors.title = "Title cannot exceed 100 characters";
         }
 
-        if (formData.subtitle && formData.subtitle.length > 200) {
-            errors.subtitle = "Subtitle cannot exceed 200 characters";
-        }
-
-        if (formData.buttonText && formData.buttonText.length > 50) {
-            errors.buttonText = "Button text cannot exceed 50 characters";
-        }
-
         if (formData.startDate && formData.endDate) {
             const start = new Date(formData.startDate);
             const end = new Date(formData.endDate);
@@ -214,20 +200,14 @@ const Banners = () => {
 
             // Add text fields
             formDataToSend.append("title", formData.title);
-            if (formData.subtitle)
-                formDataToSend.append("subtitle", formData.subtitle);
-            if (formData.buttonText)
-                formDataToSend.append("buttonText", formData.buttonText);
+            if (formData.linkUrl)
+                formDataToSend.append(
+                    "link",
+                    JSON.stringify({ url: formData.linkUrl }),
+                );
             formDataToSend.append("displayLocation", formData.displayLocation);
             formDataToSend.append("sortOrder", formData.sortOrder);
             formDataToSend.append("isActive", formData.isActive);
-
-            // Add link object as JSON string
-            const link = {
-                type: formData.linkType,
-                url: formData.linkUrl || "",
-            };
-            formDataToSend.append("link", JSON.stringify(link));
 
             // Add dates
             if (formData.startDate)
@@ -282,10 +262,7 @@ const Banners = () => {
         setEditingBanner(banner);
         setFormData({
             title: banner.title || "",
-            subtitle: banner.subtitle || "",
-            linkType: banner.link?.type || "internal",
             linkUrl: banner.link?.url || "",
-            buttonText: banner.buttonText || "",
             displayLocation: banner.displayLocation || "home",
             sortOrder: banner.sortOrder || 0,
             isActive: banner.isActive !== undefined ? banner.isActive : true,
@@ -449,79 +426,19 @@ const Banners = () => {
                             )}
                         </div>
 
-                        {/* Subtitle */}
+                        {/* Link URL */}
                         <div>
                             <label className="block text-sm font-medium text-text mb-1">
-                                Subtitle
+                                Link URL
                             </label>
                             <input
                                 type="text"
-                                name="subtitle"
-                                value={formData.subtitle}
+                                name="linkUrl"
+                                value={formData.linkUrl}
                                 onChange={handleInputChange}
                                 className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-surface text-text"
-                                placeholder="Enter banner subtitle"
+                                placeholder="e.g. /shop or https://example.com"
                             />
-                            {formErrors.subtitle && (
-                                <p className="mt-1 text-sm text-danger">
-                                    {formErrors.subtitle}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Link Type and URL */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-text mb-1">
-                                    Link Type
-                                </label>
-                                <select
-                                    name="linkType"
-                                    value={formData.linkType}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-surface text-text"
-                                >
-                                    <option value="internal">Internal</option>
-                                    <option value="external">External</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-text mb-1">
-                                    Link URL
-                                </label>
-                                <input
-                                    type="text"
-                                    name="linkUrl"
-                                    value={formData.linkUrl}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-surface text-text"
-                                    placeholder={
-                                        formData.linkType === "internal"
-                                            ? "/products"
-                                            : "https://example.com"
-                                    }
-                                />
-                            </div>
-                        </div>
-
-                        {/* Button Text */}
-                        <div>
-                            <label className="block text-sm font-medium text-text mb-1">
-                                Button Text
-                            </label>
-                            <input
-                                type="text"
-                                name="buttonText"
-                                value={formData.buttonText}
-                                onChange={handleInputChange}
-                                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-surface text-text"
-                                placeholder="e.g., Shop Now"
-                            />
-                            {formErrors.buttonText && (
-                                <p className="mt-1 text-sm text-danger">
-                                    {formErrors.buttonText}
-                                </p>
-                            )}
                         </div>
 
                         {/* Display Location and Sort Order */}
@@ -803,11 +720,6 @@ const Banners = () => {
                                                 <p className="text-sm font-medium text-text">
                                                     {banner.title}
                                                 </p>
-                                                {banner.subtitle && (
-                                                    <p className="text-xs text-text-secondary mt-1">
-                                                        {banner.subtitle}
-                                                    </p>
-                                                )}
                                                 {banner.link?.url && (
                                                     <div className="flex items-center gap-1 mt-1">
                                                         <MdLink
