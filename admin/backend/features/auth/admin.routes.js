@@ -19,5 +19,16 @@ router.put("/change-password", adminController.changePassword);
 
 // Super-admin only routes
 router.post("/register", requireRole("super-admin"), adminController.register);
+router.get("/admins", requireRole("super-admin"), adminController.listAdmins);
+router.patch(
+    "/admins/:adminId/toggle-status",
+    requireRole("super-admin"),
+    adminController.toggleAdminStatus,
+);
+router.patch(
+    "/admins/:adminId",
+    requireRole("super-admin"),
+    adminController.updateAdmin,
+);
 
 export default router;

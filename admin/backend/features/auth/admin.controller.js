@@ -222,6 +222,63 @@ async function changePassword(req, res, next) {
     }
 }
 
+async function updateAdmin(req, res, next) {
+    try {
+        const { adminId } = req.params;
+        const { name, email, phone, role } = req.body;
+        const requestingAdminId = req.admin._id;
+
+        const { data } = await adminService.updateAdmin(
+            adminId,
+            { name, email, phone, role },
+            requestingAdminId,
+        );
+
+        return apiResponse.success(res, "Admin updated successfully", data);
+    } catch (error) {
+        logger.error("Error in updateAdmin controller:", error.message);
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, "Admin not found");
+        }
+        if (error.message.includes("already exists")) {
+            return apiResponse.conflict(res, error.message);
+        }
+        next(error);
+    }
+}
+
+async function listAdmins(req, res, next) {
+    try {
+        const { data } = await adminService.listAdmins();
+        return apiResponse.success(res, "Admins fetched successfully", data);
+    } catch (error) {
+        logger.error("Error in listAdmins controller:", error.message);
+        next(error);
+    }
+}
+
+async function toggleAdminStatus(req, res, next) {
+    try {
+        const { adminId } = req.params;
+        const requestingAdminId = req.admin._id;
+
+        const { data } = await adminService.toggleAdminStatus(
+            adminId,
+            requestingAdminId,
+        );
+        return apiResponse.success(res, "Admin status updated", data);
+    } catch (error) {
+        logger.error("Error in toggleAdminStatus controller:", error.message);
+        if (error.message.includes("own account")) {
+            return apiResponse.badRequest(res, error.message);
+        }
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, "Admin not found");
+        }
+        next(error);
+    }
+}
+
 export {
     register,
     login,
@@ -230,4 +287,7 @@ export {
     getMe,
     updateProfile,
     changePassword,
+    listAdmins,
+    updateAdmin,
+    toggleAdminStatus,
 };

@@ -208,6 +208,60 @@ async function updateLastLogin(adminId) {
     });
 }
 
+async function listAdmins() {
+    const admins = await Admin.find({}, "-password").sort({ createdAt: -1 });
+    return { data: admins };
+}
+
+async function updateAdmin(targetAdminId, updates, requestingAdminId) {
+    const { name, email, phone, role } = updates;
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (role) {
+        updateData.role = role;
+        updateData.permissions =
+            ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.staff;
+    }
+
+    const admin = await Admin.findByIdAndUpdate(targetAdminId, updateData, {
+        new: true,
+        runValidators: true,
+    });
+
+    if (!admin) {
+        throw new Error("Admin not found");
+    }
+
+    logger.info(`Admin ${admin.email} updated by ${requestingAdminId}`);
+
+    const adminData = admin.toObject();
+    delete adminData.password;
+    return { data: adminData };
+}
+
+async function toggleAdminStatus(targetAdminId, requestingAdminId) {
+    if (targetAdminId.toString() === requestingAdminId.toString()) {
+        throw new Error("You cannot deactivate your own account");
+    }
+
+    const admin = await Admin.findById(targetAdminId);
+    if (!admin) throw new Error("Admin not found");
+
+    admin.isActive = !admin.isActive;
+    await admin.save();
+
+    logger.info(
+        `Admin ${admin.email} ${admin.isActive ? "activated" : "deactivated"} by ${requestingAdminId}`,
+    );
+
+    const adminData = admin.toObject();
+    delete adminData.password;
+    return { data: adminData };
+}
+
 function getRolePermissions(role) {
     return ROLE_PERMISSIONS[role] || [];
 }
@@ -220,6 +274,9 @@ export {
     getAdminProfile,
     updateAdminProfile,
     changePassword,
+    listAdmins,
+    updateAdmin,
+    toggleAdminStatus,
     getRolePermissions,
     hasPermission,
     ROLE_PERMISSIONS,

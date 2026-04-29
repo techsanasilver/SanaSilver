@@ -19,6 +19,7 @@ import Coupons from "./pages/Coupons";
 import Reviews from "./pages/Reviews";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
+import Admins from "./pages/Admins";
 
 const App = () => {
     return (
@@ -45,26 +46,115 @@ const App = () => {
                 <Route path="/" element={<Home />} />
 
                 {/* Products Routes */}
-                <Route path="/products" element={<Products />} />
-                <Route path="/products/add" element={<AddProduct />} />
-                <Route path="/categories" element={<Categories />} />
+                <Route
+                    path="/products"
+                    element={
+                        <ProtectedRoute requirePermission="products.view">
+                            <Products />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/products/add"
+                    element={
+                        <ProtectedRoute requirePermission="products.create">
+                            <AddProduct />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/categories"
+                    element={
+                        <ProtectedRoute requirePermission="categories.view">
+                            <Categories />
+                        </ProtectedRoute>
+                    }
+                />
                 <Route path="/products/:id" element={<ProductDetail />} />
-                <Route path="/products/:id/edit" element={<EditProduct />} />
+                <Route
+                    path="/products/:id/edit"
+                    element={
+                        <ProtectedRoute requirePermission="products.edit">
+                            <EditProduct />
+                        </ProtectedRoute>
+                    }
+                />
 
                 {/* Orders Routes */}
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/orders/:orderId" element={<OrderDetail />} />
+                <Route
+                    path="/orders"
+                    element={
+                        <ProtectedRoute requirePermission="orders.view">
+                            <Orders />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/orders/:orderId"
+                    element={
+                        <ProtectedRoute requirePermission="orders.view">
+                            <OrderDetail />
+                        </ProtectedRoute>
+                    }
+                />
 
                 {/* Other Routes */}
-                <Route path="/customers" element={<Customers />} />
+                <Route
+                    path="/customers"
+                    element={
+                        <ProtectedRoute requirePermission="users.view">
+                            <Customers />
+                        </ProtectedRoute>
+                    }
+                />
                 <Route
                     path="/customers/:customerId"
-                    element={<CustomerDetail />}
+                    element={
+                        <ProtectedRoute requirePermission="users.view">
+                            <CustomerDetail />
+                        </ProtectedRoute>
+                    }
                 />
-                <Route path="/banners" element={<Banners />} />
-                <Route path="/coupons" element={<Coupons />} />
-                <Route path="/reviews" element={<Reviews />} />
-                <Route path="/bulk-operations" element={<BulkOperations />} />
+                <Route
+                    path="/banners"
+                    element={
+                        <ProtectedRoute requirePermission="banners.view">
+                            <Banners />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/coupons"
+                    element={
+                        <ProtectedRoute requirePermission="coupons.view">
+                            <Coupons />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/reviews"
+                    element={
+                        <ProtectedRoute requirePermission="reviews.view">
+                            <Reviews />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/bulk-operations"
+                    element={
+                        <ProtectedRoute requirePermission="bulk-operations.export">
+                            <BulkOperations />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/admins"
+                    element={
+                        <ProtectedRoute requireRole="super-admin">
+                            <Admins />
+                        </ProtectedRoute>
+                    }
+                />
                 <Route path="/analytics" element={<div>Analytics Page</div>} />
                 <Route path="/settings" element={<div>Settings Page</div>} />
             </Route>

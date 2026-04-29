@@ -148,11 +148,16 @@ export const AuthProvider = ({ children }) => {
     };
 
     /**
-     * Check if user has specific permission
+     * Check if user has specific permission.
+     * Supports wildcards: "*" (everything), "resource.*" (all actions for a resource).
      */
     const hasPermission = (permission) => {
         if (!user || !user.permissions) return false;
-        return user.permissions.includes(permission);
+        const perms = user.permissions;
+        if (perms.includes("*")) return true;
+        if (perms.includes(permission)) return true;
+        const [resource] = permission.split(".");
+        return perms.includes(`${resource}.*`);
     };
 
     const value = {
