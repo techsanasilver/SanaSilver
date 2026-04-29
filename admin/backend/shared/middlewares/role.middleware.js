@@ -1,6 +1,6 @@
 import apiResponse from "../utils/response.util.js";
 import logger from "../utils/logger.util.js";
-import { hasPermission } from "../../features/auth/admin.service.js";
+import { hasPermission } from "../config/permissions.config.js";
 
 function requireRole(...allowedRoles) {
     return (req, res, next) => {
@@ -16,12 +16,12 @@ function requireRole(...allowedRoles) {
                 `Role check failed: Admin ${
                     req.admin.email
                 } (${adminRole}) attempted to access route requiring ${allowedRoles.join(
-                    ", "
-                )}`
+                    ", ",
+                )}`,
             );
             return apiResponse.forbidden(
                 res,
-                "You do not have permission to access this resource"
+                "You do not have permission to access this resource",
             );
         }
 
@@ -39,18 +39,18 @@ function requirePermission(...requiredPermissions) {
         const adminPermissions = req.admin.permissions || [];
 
         const hasAllPermissions = requiredPermissions.every((permission) =>
-            hasPermission(adminPermissions, permission)
+            hasPermission(adminPermissions, permission),
         );
 
         if (!hasAllPermissions) {
             logger.warn(
                 `Permission check failed: Admin ${
                     req.admin.email
-                } lacks required permissions: ${requiredPermissions.join(", ")}`
+                } lacks required permissions: ${requiredPermissions.join(", ")}`,
             );
             return apiResponse.forbidden(
                 res,
-                "You do not have permission to perform this action"
+                "You do not have permission to perform this action",
             );
         }
 

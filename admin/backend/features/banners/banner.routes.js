@@ -2,6 +2,7 @@ import express from "express";
 import * as bannerController from "./banner.controller.js";
 import { parseFormDataJSON } from "./banner.middleware.js";
 import authMiddleware from "../../shared/middlewares/auth.middleware.js";
+import { requirePermission } from "../../shared/middlewares/role.middleware.js";
 import { uploadMultiple } from "../../shared/middlewares/upload.middleware.js";
 
 const router = express.Router();
@@ -20,34 +21,52 @@ router.get("/:id", bannerController.getBannerById);
 router.post(
     "/",
     authMiddleware,
+    requirePermission("banners.create"),
     uploadMultiple("images", 2),
     parseFormDataJSON,
-    bannerController.createBanner
+    bannerController.createBanner,
 );
 
 // Update banner (optional images)
 router.put(
     "/:id",
     authMiddleware,
+    requirePermission("banners.edit"),
     uploadMultiple("images", 2),
     parseFormDataJSON,
-    bannerController.updateBanner
+    bannerController.updateBanner,
 );
 
 // Soft delete banner (deactivate)
-router.delete("/:id", authMiddleware, bannerController.softDeleteBanner);
+router.delete(
+    "/:id",
+    authMiddleware,
+    requirePermission("banners.delete"),
+    bannerController.softDeleteBanner,
+);
 
 // Hard delete banner (permanent)
-router.delete("/:id/force", authMiddleware, bannerController.hardDeleteBanner);
+router.delete(
+    "/:id/force",
+    authMiddleware,
+    requirePermission("banners.delete"),
+    bannerController.hardDeleteBanner,
+);
 
 // Update banner status
 router.patch(
     "/:id/status",
     authMiddleware,
-    bannerController.updateBannerStatus
+    requirePermission("banners.edit"),
+    bannerController.updateBannerStatus,
 );
 
 // Reorder banners
-router.post("/reorder", authMiddleware, bannerController.reorderBanners);
+router.post(
+    "/reorder",
+    authMiddleware,
+    requirePermission("banners.edit"),
+    bannerController.reorderBanners,
+);
 
 export default router;

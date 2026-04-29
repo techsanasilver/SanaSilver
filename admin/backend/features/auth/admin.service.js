@@ -5,30 +5,10 @@ import {
     generateRefreshToken,
     verifyRefreshToken,
 } from "../../shared/utils/jwt.util.js";
-
-// Permission definitions per role
-const ROLE_PERMISSIONS = {
-    "super-admin": ["*"],
-    admin: [
-        "products.*",
-        "orders.*",
-        "users.view",
-        "users.edit",
-        "coupons.*",
-        "categories.*",
-        "reviews.*",
-    ],
-    manager: [
-        "products.view",
-        "products.edit",
-        "orders.view",
-        "orders.edit",
-        "categories.view",
-        "reviews.view",
-        "reviews.manage",
-    ],
-    staff: ["products.view", "orders.view", "reviews.view"],
-};
+import {
+    ROLE_PERMISSIONS,
+    hasPermission,
+} from "../../shared/config/permissions.config.js";
 
 async function registerAdmin(data, createdByAdminId) {
     const { name, email, password, role = "staff", phone, avatar } = data;
@@ -230,21 +210,6 @@ async function updateLastLogin(adminId) {
 
 function getRolePermissions(role) {
     return ROLE_PERMISSIONS[role] || [];
-}
-
-function hasPermission(adminPermissions, requiredPermission) {
-    if (adminPermissions.includes("*")) {
-        return true;
-    }
-
-    if (adminPermissions.includes(requiredPermission)) {
-        return true;
-    }
-
-    const [resource, action] = requiredPermission.split(".");
-    const wildcardPermission = `${resource}.*`;
-
-    return adminPermissions.includes(wildcardPermission);
 }
 
 export {

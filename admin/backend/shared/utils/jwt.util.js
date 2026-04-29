@@ -40,56 +40,45 @@ const verifyRefreshToken = (token) => {
     }
 };
 
-const getAccessTokenCookieOptions = () => {
-    // Get sameSite from env or default based on NODE_ENV
+// Base cookie settings read from environment variables.
+// All token cookie functions share these settings, differing only in maxAge.
+//
+// COOKIE_HTTP_ONLY
+//   "true"  — cookie inaccessible to JS (recommended; prevents XSS token theft)
+//   "false" — client JS can read the cookie (only if explicitly needed)
+//
+// COOKIE_SECURE
+//   "true"  — cookie sent only over HTTPS (set this in production)
+//   "false" — cookie sent over HTTP too (use in local dev without HTTPS)
+//   omit    — auto-detected: true in production, false otherwise
+//
+// COOKIE_SAME_SITE
+//   "strict" — cookie never sent on cross-site requests (strongest CSRF protection)
+//   "lax"    — cookie sent on top-level cross-site navigations (good default for dev)
+//   "none"   — cookie sent on all cross-site requests; requires secure=true (for cross-origin APIs)
+const getCookieBase = () => {
+    const httpOnly = process.env.COOKIE_HTTP_ONLY !== "false"; // default true
+
+    let secure;
+    if (process.env.COOKIE_SECURE === "true") secure = true;
+    else if (process.env.COOKIE_SECURE === "false") secure = false;
+    else secure = process.env.NODE_ENV === "production"; // auto-detect
+
     const sameSite =
         process.env.COOKIE_SAME_SITE ||
-        (process.env.NODE_ENV === "production" ? "strict" : "lax");
+        (process.env.NODE_ENV === "production" ? "strict" : "lax"); // auto-detect
 
-    // Get secure from env or auto-detect based on NODE_ENV
-    let secure;
-    if (process.env.COOKIE_SECURE === "true") {
-        secure = true;
-    } else if (process.env.COOKIE_SECURE === "false") {
-        secure = false;
-    } else {
-        // Auto: secure in production, not secure in development
-        secure = process.env.NODE_ENV === "production";
-    }
+    return { httpOnly, secure, sameSite, path: "/" };
+};
 
-    return {
-        httpOnly: true,
-        secure: secure,
-        sameSite: sameSite,
-        path: "/",
-        maxAge: 15 * 60 * 1000, // 15 minutes
-    };
+const getAccessTokenCookieOptions = () => {
+    const base = getCookieBase();
+    return { ...base, maxAge: 15 * 60 * 1000 }; // 15 minutes
 };
 
 const getRefreshTokenCookieOptions = () => {
-    // Get sameSite from env or default based on NODE_ENV
-    const sameSite =
-        process.env.COOKIE_SAME_SITE ||
-        (process.env.NODE_ENV === "production" ? "strict" : "lax");
-
-    // Get secure from env or auto-detect based on NODE_ENV
-    let secure;
-    if (process.env.COOKIE_SECURE === "true") {
-        secure = true;
-    } else if (process.env.COOKIE_SECURE === "false") {
-        secure = false;
-    } else {
-        // Auto: secure in production, not secure in development
-        secure = process.env.NODE_ENV === "production";
-    }
-
-    return {
-        httpOnly: true,
-        secure: secure,
-        sameSite: sameSite,
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    };
+    const base = getCookieBase();
+    return { ...base, maxAge: 7 * 24 * 60 * 60 * 1000 }; // 7 days
 };
 
 export {
