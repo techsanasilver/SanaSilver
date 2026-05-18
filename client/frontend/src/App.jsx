@@ -23,6 +23,7 @@ import ShippingPolicy from "./pages/ShippingPolicy";
 import ReturnsPolicy from "./pages/ReturnsPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
+import ContactUs from "./pages/ContactUs";
 
 const App = () => {
     return (
@@ -103,6 +104,7 @@ const App = () => {
 
                 {/* Policy & Info Routes */}
                 <Route path="/faq" element={<FAQPage />} />
+                <Route path="/contact" element={<ContactUs />} />
                 <Route path="/shipping" element={<ShippingPolicy />} />
                 <Route path="/returns" element={<ReturnsPolicy />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
