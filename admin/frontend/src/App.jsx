@@ -20,6 +20,7 @@ import Reviews from "./pages/Reviews";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Admins from "./pages/Admins";
+import Analytics from "./pages/Analytics";
 
 const App = () => {
     return (
@@ -44,6 +45,7 @@ const App = () => {
                 }
             >
                 <Route path="/" element={<Home />} />
+                <Route path="/analytics" element={<Analytics />} />
 
                 {/* Products Routes */}
                 <Route
