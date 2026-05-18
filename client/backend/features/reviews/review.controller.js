@@ -109,10 +109,10 @@ export const submitReviewController = async (req, res) => {
             return apiResponse.badRequest(res, validationError);
         }
 
-        // Build display name: "Priya S." — first name + last initial
+        // Build display name: full name
         const lastName = req.user.lastName || "";
         const customerName = lastName
-            ? `${req.user.firstName} ${lastName.charAt(0)}.`
+            ? `${req.user.firstName} ${lastName}`
             : req.user.firstName;
 
         const review = await reviewService.submitReview(
